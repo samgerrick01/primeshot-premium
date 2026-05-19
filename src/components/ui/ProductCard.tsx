@@ -2,6 +2,8 @@ import { ShoppingCart, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Product } from '@/types';
 import { useCartStore } from '@/store/cartStore';
+import { useToast } from '@/components/Toast';
+import { formatPrice } from '@/utils/format';
 
 interface ProductCardProps {
   product: Product;
@@ -9,6 +11,13 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((state) => state.addItem);
+  const { showToast } = useToast();
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    addItem(product);
+    showToast(`${product.name} added to cart!`, 'success');
+  };
 
   return (
     <div className="card group overflow-hidden">
@@ -53,13 +62,10 @@ export function ProductCard({ product }: ProductCardProps) {
 
         <div className="flex items-center justify-between mt-3">
           <span className="text-lg font-bold text-text-primary dark:text-dark-text-primary">
-            ${product.price.toFixed(2)}
+            {formatPrice(product.price)}
           </span>
           <button
-            onClick={(e) => {
-              e.preventDefault();
-              addItem(product);
-            }}
+            onClick={handleAddToCart}
             className="btn-primary p-2.5"
             aria-label="Add to cart"
           >

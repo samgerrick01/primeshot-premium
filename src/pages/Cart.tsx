@@ -8,6 +8,7 @@ import {
   Target,
 } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
+import { formatPrice } from '@/utils/format';
 
 export function Cart() {
   const {
@@ -130,7 +131,7 @@ export function Cart() {
 
                   <div className="flex items-center gap-3">
                     <span className="font-semibold text-text-primary dark:text-dark-text-primary">
-                      ${(item.product.price * item.quantity).toFixed(2)}
+                      {formatPrice(item.product.price * item.quantity)}
                     </span>
                     <button
                       onClick={() => removeItem(item.product_id)}
@@ -156,7 +157,7 @@ export function Cart() {
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-text-secondary dark:text-dark-text-secondary">
                 <span>Subtotal ({getItemCount()} items)</span>
-                <span>${getTotal().toFixed(2)}</span>
+                <span>{formatPrice(getTotal())}</span>
               </div>
               <div className="flex justify-between text-text-secondary dark:text-dark-text-secondary">
                 <span>Shipping</span>
@@ -171,7 +172,7 @@ export function Cart() {
               <hr className="border-border dark:border-dark-border" />
               <div className="flex justify-between font-bold text-text-primary dark:text-dark-text-primary text-base">
                 <span>Total</span>
-                <span>${getTotal().toFixed(2)}</span>
+                <span>{formatPrice(getTotal())}</span>
               </div>
             </div>
 

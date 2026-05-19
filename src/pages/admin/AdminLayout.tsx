@@ -7,6 +7,9 @@ import {
   Users,
   Package,
   Ruler,
+  Tags,
+  Weight,
+  Plus,
   LogOut,
   Home,
   ChevronLeft,
@@ -35,9 +38,24 @@ const sidebarLinks = [
     icon: Users,
   },
   {
+    label: 'Products',
+    path: '/admin/products',
+    icon: Package,
+  },
+  {
     label: 'Add Product',
     path: '/admin/products/add',
-    icon: Package,
+    icon: Plus,
+  },
+  {
+    label: 'Categories',
+    path: '/admin/categories',
+    icon: Tags,
+  },
+  {
+    label: 'Grains',
+    path: '/admin/grains',
+    icon: Weight,
   },
   {
     label: 'Diameters',

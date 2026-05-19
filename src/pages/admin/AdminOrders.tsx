@@ -17,6 +17,7 @@ import {
   useUpdateOrderStatus,
 } from '@/hooks/adminQueries';
 import { useToast } from '@/components/Toast';
+import { formatPrice } from '@/utils/format';
 
 const statusConfig: Record<
   string,
@@ -204,7 +205,7 @@ export function AdminOrders() {
                         {formatDate(order.created_at)}
                       </span>
                       <span className="font-bold text-dark-text-primary">
-                        ₱{Number(order.total).toLocaleString()}
+                        {formatPrice(Number(order.total))}
                       </span>
                       {expandedOrder === order.id ? (
                         <ChevronUp className="w-4 h-4 text-dark-text-muted" />
@@ -246,14 +247,14 @@ export function AdminOrders() {
                               {item.product_name} × {item.quantity}
                             </span>
                             <span className="text-dark-text-primary font-medium">
-                              ₱{Number(item.price).toLocaleString()}
+                              {formatPrice(Number(item.price))}
                             </span>
                           </div>
                         ))}
                         <div className="flex justify-between items-center text-sm pt-2 border-t border-dark-border">
                           <span className="text-dark-text-muted">Total</span>
                           <span className="text-dark-text-primary font-bold">
-                            ₱{Number(order.total).toLocaleString()}
+                            {formatPrice(Number(order.total))}
                           </span>
                         </div>
                       </div>

@@ -15,6 +15,8 @@ export interface Product {
   reviews: number;
   featured: boolean;
   created_at: string;
+  grains?: string;
+  diameter?: string;
 }
 
 export interface CartItem {

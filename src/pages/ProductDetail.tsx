@@ -5,16 +5,21 @@ import {
   Star,
   Minus,
   Plus,
-  ChevronLeft,
   Target,
+  Package,
+  Weight,
+  Ruler,
 } from 'lucide-react';
 import { useProduct } from '@/hooks/useProducts';
 import { useCartStore } from '@/store/cartStore';
+import { useToast } from '@/components/Toast';
+import { formatPrice, formatNumber } from '@/utils/format';
 
 export function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const { data: product, isLoading } = useProduct(id!);
   const addItem = useCartStore((state) => state.addItem);
+  const { showToast } = useToast();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
 
@@ -53,6 +58,11 @@ export function ProductDetail() {
   }
 
   const images = product.images?.length ? product.images : ['/placeholder.svg'];
+
+  const handleAddToCart = () => {
+    addItem(product, quantity);
+    showToast(`${product.name} added to cart!`, 'success');
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -141,9 +151,44 @@ export function ProductDetail() {
             {product.description}
           </p>
 
+          {/* Product Specifications - Grains, Diameter, Stock */}
+          <div className="mt-6 grid grid-cols-3 gap-4">
+            <div className="bg-surface-tertiary dark:bg-dark-surface-tertiary rounded-lg p-4 text-center">
+              <Weight className="w-5 h-5 mx-auto text-primary-600 dark:text-primary-400 mb-1" />
+              <p className="text-xs text-text-muted dark:text-dark-text-muted uppercase tracking-wider">
+                Grains
+              </p>
+              <p className="font-semibold text-text-primary dark:text-dark-text-primary">
+                {product.grains ? `${product.grains} gr` : 'N/A'}
+              </p>
+            </div>
+            <div className="bg-surface-tertiary dark:bg-dark-surface-tertiary rounded-lg p-4 text-center">
+              <Ruler className="w-5 h-5 mx-auto text-primary-600 dark:text-primary-400 mb-1" />
+              <p className="text-xs text-text-muted dark:text-dark-text-muted uppercase tracking-wider">
+                Diameter
+              </p>
+              <p className="font-semibold text-text-primary dark:text-dark-text-primary">
+                {product.diameter || 'N/A'}
+              </p>
+            </div>
+            <div className="bg-surface-tertiary dark:bg-dark-surface-tertiary rounded-lg p-4 text-center">
+              <Package className="w-5 h-5 mx-auto text-primary-600 dark:text-primary-400 mb-1" />
+              <p className="text-xs text-text-muted dark:text-dark-text-muted uppercase tracking-wider">
+                Stocks
+              </p>
+              <p
+                className={`font-semibold ${product.stock > 0 ? 'text-text-primary dark:text-dark-text-primary' : 'text-red-500'}`}
+              >
+                {product.stock > 0
+                  ? formatNumber(product.stock)
+                  : 'Out of Stock'}
+              </p>
+            </div>
+          </div>
+
           <div className="mt-8">
             <span className="text-3xl font-bold text-text-primary dark:text-dark-text-primary">
-              ${product.price.toFixed(2)}
+              {formatPrice(product.price)}
             </span>
           </div>
 
@@ -167,11 +212,12 @@ export function ProductDetail() {
               </button>
             </div>
             <button
-              onClick={() => addItem(product, quantity)}
-              className="btn-primary flex-1 flex items-center justify-center gap-2"
+              onClick={handleAddToCart}
+              disabled={product.stock <= 0}
+              className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ShoppingCart className="w-5 h-5" />
-              Add to Cart
+              {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
             </button>
           </div>
 

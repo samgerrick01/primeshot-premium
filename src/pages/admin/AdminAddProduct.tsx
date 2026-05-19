@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Package,
@@ -9,16 +9,18 @@ import {
   Image as ImageIcon,
   Film,
   Star,
-  Check,
   Trash2,
   AlertTriangle,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/Toast';
+import { useDiameters, useCategories, useGrains } from '@/hooks/adminQueries';
 
-interface Diameter {
-  id: number;
-  value: string;
+interface PendingFile {
+  file: File;
+  previewUrl: string;
+  type: 'image' | 'video';
+  thumbnail: boolean;
 }
 
 interface UploadedFile {
@@ -28,15 +30,6 @@ interface UploadedFile {
   thumbnail?: boolean;
 }
 
-const PRODUCT_CATEGORIES = [
-  'Pellets',
-  'Slugs',
-  'Diabolo',
-  'Hollow Point',
-  'Match Grade',
-  'Accessories',
-];
-
 const MAX_FILES = 5;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
@@ -45,12 +38,16 @@ export function AdminAddProduct() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
-  const [diameters, setDiameters] = useState<Diameter[]>([]);
-  const [loading, setLoading] = useState(false);
+
+  // Load from DB
+  const { data: diameters = [] } = useDiameters();
+  const { data: categories = [] } = useCategories();
+  const { data: grains = [] } = useGrains();
+
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     product_name: '',
@@ -64,24 +61,8 @@ export function AdminAddProduct() {
     featured: false,
   });
 
-  const [files, setFiles] = useState<UploadedFile[]>([]);
-
-  useEffect(() => {
-    fetchDiameters();
-  }, []);
-
-  const fetchDiameters = async () => {
-    const { data, error } = await supabase
-      .from('diameters')
-      .select('*')
-      .order('id', { ascending: true });
-
-    if (error) {
-      console.error('[AdminAddProduct] fetch diameters error:', error);
-    } else {
-      setDiameters(data || []);
-    }
-  };
+  // Pending files - stored locally, NOT uploaded yet
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -97,86 +78,50 @@ export function AdminAddProduct() {
     }));
   };
 
-  const uploadFile = async (file: File): Promise<UploadedFile | null> => {
-    const isVideo = file.type.startsWith('video/');
-    const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
-
-    if (file.size > maxSize) {
-      setError(
-        `${isVideo ? 'Video' : 'Image'} file too large. Max ${isVideo ? '50MB' : '5MB'}.`,
-      );
-      return null;
-    }
-
-    // Generate unique file name
-    const ext = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
-    const filePath = `products/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('primeshot')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (uploadError) {
-      console.error('[AdminAddProduct] upload error:', uploadError);
-      setError(`Failed to upload ${file.name}: ${uploadError.message}`);
-      return null;
-    }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('primeshot')
-      .getPublicUrl(filePath);
-
-    return {
-      url: urlData.publicUrl,
-      path: filePath,
-      type: isVideo ? 'video' : 'image',
-      thumbnail: false,
-    };
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
 
     setError(null);
-    setUploadingFiles(true);
 
-    const remaining = MAX_FILES - files.length;
-    const filesToUpload = Array.from(selectedFiles).slice(0, remaining);
+    const remaining = MAX_FILES - pendingFiles.length;
+    const filesToAdd = Array.from(selectedFiles).slice(0, remaining);
 
-    if (filesToUpload.length < selectedFiles.length) {
+    if (filesToAdd.length < selectedFiles.length) {
       setError(
         `Maximum of ${MAX_FILES} files allowed. Only added ${remaining} more.`,
       );
     }
 
     // Validate file types
-    for (const f of filesToUpload) {
+    for (const f of filesToAdd) {
       if (!f.type.startsWith('image/') && !f.type.startsWith('video/')) {
         setError(
           `Invalid file type: ${f.name}. Only images and videos are supported.`,
         );
-        setUploadingFiles(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+      if (
+        f.size > (f.type.startsWith('video/') ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE)
+      ) {
+        setError(
+          `${f.type.startsWith('video/') ? 'Video' : 'Image'} file too large. Max ${f.type.startsWith('video/') ? '50MB' : '5MB'}.`,
+        );
         if (fileInputRef.current) fileInputRef.current.value = '';
         return;
       }
     }
 
-    const uploaded: UploadedFile[] = [];
-    for (const f of filesToUpload) {
-      const result = await uploadFile(f);
-      if (result) {
-        uploaded.push(result);
-      }
-    }
+    const newFiles: PendingFile[] = filesToAdd.map((f) => ({
+      file: f,
+      previewUrl: URL.createObjectURL(f),
+      type: f.type.startsWith('video/') ? 'video' : 'image',
+      thumbnail: false,
+    }));
 
-    setFiles((prev) => {
-      const updated = [...prev, ...uploaded];
+    setPendingFiles((prev) => {
+      const updated = [...prev, ...newFiles];
 
       // Auto-set first image as thumbnail if none selected yet
       if (!updated.some((uf) => uf.thumbnail)) {
@@ -189,18 +134,17 @@ export function AdminAddProduct() {
       return updated;
     });
 
-    setUploadingFiles(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const removeFile = async (index: number) => {
-    const fileToRemove = files[index];
+  const removePendingFile = (index: number) => {
+    const fileToRemove = pendingFiles[index];
     if (!fileToRemove) return;
 
-    // Delete from storage
-    await supabase.storage.from('primeshot').remove([fileToRemove.path]);
+    // Revoke blob URL to free memory
+    URL.revokeObjectURL(fileToRemove.previewUrl);
 
-    setFiles((prev) => {
+    setPendingFiles((prev) => {
       const updated = prev.filter((_, i) => i !== index);
 
       // If we removed the thumbnail, set a new one
@@ -216,7 +160,7 @@ export function AdminAddProduct() {
   };
 
   const setThumbnail = (index: number) => {
-    setFiles((prev) =>
+    setPendingFiles((prev) =>
       prev.map((f, i) => ({
         ...f,
         thumbnail: i === index,
@@ -224,82 +168,206 @@ export function AdminAddProduct() {
     );
   };
 
+  // Upload a single file to Supabase
+  const uploadFile = async (file: File): Promise<UploadedFile | null> => {
+    const isVideo = file.type.startsWith('video/');
+
+    // Generate unique file name
+    const ext = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+    const filePath = `products/${fileName}`;
+
+    console.log('[AdminAddProduct] Uploading to bucket "primeshot":', filePath);
+    console.log(
+      '[AdminAddProduct] File size:',
+      (file.size / 1024).toFixed(1),
+      'KB',
+    );
+
+    // First, try to create the bucket if it doesn't exist (silently ignore if already exists)
+    try {
+      await supabase.storage.createBucket('primeshot', {
+        public: true,
+      });
+      console.log('[AdminAddProduct] Created or verified bucket "primeshot"');
+    } catch {
+      // Bucket likely already exists
+      console.log(
+        '[AdminAddProduct] Bucket already exists or cannot be created',
+      );
+    }
+
+    // Upload file
+    const { error: uploadError } = await supabase.storage
+      .from('primeshot')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('[AdminAddProduct] Upload error details:', uploadError);
+      return null;
+    }
+
+    console.log('[AdminAddProduct] Upload successful!');
+
+    // Get public URL (works for public buckets)
+    const { data: urlData } = supabase.storage
+      .from('primeshot')
+      .getPublicUrl(filePath);
+
+    // Also get a signed URL as fallback
+    const { data: signedData } = await supabase.storage
+      .from('primeshot')
+      .createSignedUrl(filePath, 31536000); // 1 year expiry
+
+    const publicUrl = urlData.publicUrl;
+    const signedUrl = signedData?.signedUrl;
+
+    console.log('[AdminAddProduct] Public URL:', publicUrl);
+    console.log('[AdminAddProduct] Signed URL:', signedUrl);
+
+    // Use signed URL as fallback if public URL doesn't work
+    const finalUrl = signedUrl || publicUrl;
+
+    return {
+      url: finalUrl,
+      path: filePath,
+      type: isVideo ? 'video' : 'image',
+      thumbnail: false,
+    };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSubmitting(true);
+    setDebugInfo(null);
 
-    // Validate
+    // Validate form
     if (!form.product_name.trim()) {
       setError('Product name is required');
-      setSubmitting(false);
       return;
     }
     if (!form.price || parseFloat(form.price) <= 0) {
       setError('Please enter a valid price');
-      setSubmitting(false);
       return;
     }
     if (!form.diameter) {
       setError('Please select a diameter');
-      setSubmitting(false);
       return;
     }
     if (!form.category) {
       setError('Please select a category');
-      setSubmitting(false);
+      return;
+    }
+    if (pendingFiles.length === 0) {
+      setError('Please select at least one image');
       return;
     }
 
-    // Build images as array of URLs + track thumbnail
-    const imageUrls = files.filter((f) => f.type === 'image').map((f) => f.url);
-    const videoUrls = files.filter((f) => f.type === 'video').map((f) => f.url);
-    const thumbnailUrl =
-      files.find((f) => f.thumbnail)?.url || imageUrls[0] || '';
+    setSubmitting(true);
 
-    const { error: insertError } = await supabase.from('products').insert({
+    // === UPLOAD FILES NOW (on CTA click) ===
+    const uploadedFiles: UploadedFile[] = [];
+    for (const pf of pendingFiles) {
+      const result = await uploadFile(pf.file);
+      if (result) {
+        result.thumbnail = pf.thumbnail;
+        uploadedFiles.push(result);
+      } else {
+        const errMsg = `Failed to upload file: ${pf.file.name}. 
+
+🔍 POSSIBLE FIX:
+1️⃣ Go to Supabase Dashboard → Storage → Create bucket named "primeshot" (make it Public)
+2️⃣ Or run the SQL from "supabase-add-media-columns.sql" in Supabase SQL Editor
+
+Check browser console (F12) for error details.`;
+        setError(errMsg);
+        setSubmitting(false);
+        return;
+      }
+    }
+
+    // Build media arrays
+    const imageUrls = uploadedFiles
+      .filter((f) => f.type === 'image')
+      .map((f) => f.url);
+    const videoUrls = uploadedFiles
+      .filter((f) => f.type === 'video')
+      .map((f) => f.url);
+    const thumbnailUrl =
+      uploadedFiles.find((f) => f.thumbnail)?.url || imageUrls[0] || '';
+
+    console.log('[AdminAddProduct] Image URLs to insert:', imageUrls);
+
+    // Prepare insert data
+    const insertData: Record<string, unknown> = {
       product_name: form.product_name,
       description: form.description,
       price: parseFloat(form.price),
       stocks: parseInt(form.stocks) || 0,
       caliber: form.caliber,
-      grains: parseFloat(form.grains) || 0,
+      grains: form.grains || '0',
       diameter: form.diameter,
       category: form.category,
       images: imageUrls,
-      videos: videoUrls,
-      thumbnail: thumbnailUrl,
       featured: form.featured,
-    });
+    };
+
+    // Try to add videos/thumbnail if columns exist
+    try {
+      const { data: colCheck } = await supabase
+        .from('products')
+        .select('videos')
+        .limit(1);
+      if (colCheck !== null) {
+        insertData.videos = videoUrls;
+        insertData.thumbnail = thumbnailUrl;
+      }
+    } catch {
+      // columns don't exist - skip
+    }
+
+    // Insert product
+    const { error: insertError } = await supabase
+      .from('products')
+      .insert(insertData);
 
     if (insertError) {
-      console.error('[AdminAddProduct] insert error:', insertError);
+      console.error('[AdminAddProduct] Insert error:', insertError);
       setError(insertError.message);
       showToast(insertError.message, 'error');
-    } else {
-      setSuccess(true);
-      showToast('Product added successfully!', 'success');
-      // Reset form
-      setForm({
-        product_name: '',
-        description: '',
-        price: '',
-        stocks: '',
-        caliber: '',
-        grains: '',
-        diameter: '',
-        category: '',
-        featured: false,
-      });
-      setFiles([]);
-      setTimeout(() => setSuccess(false), 3000);
+      setSubmitting(false);
+      return;
     }
+
+    setSuccess(true);
+    showToast('Product added successfully!', 'success');
+    // Reset form
+    setForm({
+      product_name: '',
+      description: '',
+      price: '',
+      stocks: '',
+      caliber: '',
+      grains: '',
+      diameter: '',
+      category: '',
+      featured: false,
+    });
+    // Clear pending files
+    for (const pf of pendingFiles) {
+      URL.revokeObjectURL(pf.previewUrl);
+    }
+    setPendingFiles([]);
     setSubmitting(false);
+    setTimeout(() => setSuccess(false), 3000);
   };
 
-  const imageFiles = files.filter((f) => f.type === 'image');
-  const videoFiles = files.filter((f) => f.type === 'video');
-  const filesRemaining = MAX_FILES - files.length;
+  const imageFiles = pendingFiles.filter((f) => f.type === 'image');
+  const videoFiles = pendingFiles.filter((f) => f.type === 'video');
+  const filesRemaining = MAX_FILES - pendingFiles.length;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -325,8 +393,22 @@ export function AdminAddProduct() {
       {/* Error Message */}
       {error && (
         <div className="mb-6 p-4 rounded-lg bg-red-900/20 border border-red-800 text-sm text-red-400 flex items-start gap-2">
-          <span className="mt-0.5">⚠</span>
-          <span>{error}</span>
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <pre className="whitespace-pre-wrap font-sans text-sm">{error}</pre>
+        </div>
+      )}
+
+      {/* Debug Info */}
+      {debugInfo && (
+        <div className="mb-6 p-4 rounded-lg bg-blue-900/20 border border-blue-800 text-sm text-blue-400 flex items-start gap-2">
+          <span>{debugInfo}</span>
+          <button
+            type="button"
+            onClick={() => setDebugInfo(null)}
+            className="ml-auto shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -414,20 +496,27 @@ export function AdminAddProduct() {
               className="w-full px-4 py-2.5 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
             />
           </div>
+          {/* Grains - dropdown loaded from DB */}
           <div>
             <label className="block text-sm font-medium text-dark-text-primary mb-1.5">
               Grains
             </label>
-            <input
-              type="number"
-              name="grains"
-              value={form.grains}
-              onChange={handleChange}
-              placeholder="0.0"
-              step="0.1"
-              min="0"
-              className="w-full px-4 py-2.5 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-            />
+            <div className="relative">
+              <select
+                name="grains"
+                value={form.grains}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 pr-8 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm appearance-none cursor-pointer"
+              >
+                <option value="">Select grains...</option>
+                {grains.map((g) => (
+                  <option key={g.id} value={g.value}>
+                    {g.value} gr
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-text-muted pointer-events-none" />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-dark-text-primary mb-1.5">
@@ -453,26 +542,34 @@ export function AdminAddProduct() {
           </div>
         </div>
 
-        {/* Category */}
+        {/* Category - loaded from DB */}
         <div>
           <label className="block text-sm font-medium text-dark-text-primary mb-1.5">
             Category <span className="text-red-400">*</span>
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {PRODUCT_CATEGORIES.map((cat) => (
+            {categories.map((cat) => (
               <button
-                key={cat}
+                key={cat.id}
                 type="button"
-                onClick={() => setForm((prev) => ({ ...prev, category: cat }))}
+                onClick={() =>
+                  setForm((prev) => ({ ...prev, category: cat.name }))
+                }
                 className={`px-4 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-                  form.category === cat
+                  form.category === cat.name
                     ? 'bg-primary-600/20 text-primary-400 border-primary-500/30'
                     : 'bg-dark-surface text-dark-text-secondary border-dark-border hover:border-primary-500/30 hover:text-dark-text-primary'
                 }`}
               >
-                {cat}
+                {cat.name}
               </button>
             ))}
+            {categories.length === 0 && (
+              <p className="text-xs text-dark-text-muted col-span-full">
+                No categories available. Add categories in the admin panel
+                first.
+              </p>
+            )}
           </div>
         </div>
 
@@ -485,14 +582,14 @@ export function AdminAddProduct() {
                 (Up to {MAX_FILES} files)
               </span>
             </label>
-            {files.length > 0 && (
+            {pendingFiles.length > 0 && (
               <span className="text-xs text-dark-text-muted">
-                {files.length}/{MAX_FILES} used
+                {pendingFiles.length}/{MAX_FILES} selected
               </span>
             )}
           </div>
 
-          {/* Upload Area / Dropzone */}
+          {/* Upload Area - JUST SELECTS FILES, does not upload */}
           <div
             onClick={() => filesRemaining > 0 && fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-8 text-center transition-colors cursor-pointer ${
@@ -512,7 +609,7 @@ export function AdminAddProduct() {
             <Upload className="w-8 h-8 text-dark-text-muted mx-auto mb-3" />
             <p className="text-sm text-dark-text-secondary font-medium">
               {filesRemaining > 0
-                ? 'Click to upload images or videos'
+                ? 'Click to select images or videos'
                 : 'Maximum files reached'}
             </p>
             <p className="text-xs text-dark-text-muted mt-1">
@@ -521,18 +618,13 @@ export function AdminAddProduct() {
             <p className="text-xs text-dark-text-muted">
               Supported: JPG, PNG, WebP, GIF, MP4, WebM
             </p>
+            <p className="text-xs text-primary-400 mt-2">
+              Files will be uploaded when you click "Add Product"
+            </p>
           </div>
 
-          {/* Uploading Indicator */}
-          {uploadingFiles && (
-            <div className="flex items-center gap-2 mt-3 text-sm text-primary-400">
-              <div className="w-4 h-4 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
-              Uploading files...
-            </div>
-          )}
-
-          {/* File Previews */}
-          {files.length > 0 && (
+          {/* File Previews (local only - not uploaded yet) */}
+          {pendingFiles.length > 0 && (
             <div className="mt-4 space-y-3">
               {/* Image Previews */}
               {imageFiles.length > 0 && (
@@ -542,7 +634,7 @@ export function AdminAddProduct() {
                     Images ({imageFiles.length})
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                    {files.map((file, index) => {
+                    {pendingFiles.map((file, index) => {
                       if (file.type !== 'image') return null;
                       return (
                         <div
@@ -554,7 +646,7 @@ export function AdminAddProduct() {
                           }`}
                         >
                           <img
-                            src={file.url}
+                            src={file.previewUrl}
                             alt={`Product image ${index + 1}`}
                             className="w-full aspect-square object-cover"
                           />
@@ -577,7 +669,7 @@ export function AdminAddProduct() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                removeFile(index);
+                                removePendingFile(index);
                               }}
                               className="p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/80 transition-colors"
                               title="Remove"
@@ -613,7 +705,7 @@ export function AdminAddProduct() {
                     Videos ({videoFiles.length})
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {files.map((file, index) => {
+                    {pendingFiles.map((file, index) => {
                       if (file.type !== 'video') return null;
                       return (
                         <div
@@ -621,13 +713,13 @@ export function AdminAddProduct() {
                           className="relative group rounded-lg overflow-hidden border border-dark-border"
                         >
                           <video
-                            src={file.url}
+                            src={file.previewUrl}
                             controls
                             className="w-full aspect-video bg-black"
                           />
                           <button
                             type="button"
-                            onClick={() => removeFile(index)}
+                            onClick={() => removePendingFile(index)}
                             className="absolute top-2 right-2 p-1.5 rounded-lg bg-red-500/60 hover:bg-red-500/80 transition-colors opacity-0 group-hover:opacity-100"
                             title="Remove"
                           >
@@ -671,13 +763,13 @@ export function AdminAddProduct() {
           </button>
           <button
             type="submit"
-            disabled={submitting || uploadingFiles}
+            disabled={submitting}
             className="flex-1 px-5 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {submitting ? (
               <>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Adding Product...
+                Uploading & Adding Product...
               </>
             ) : (
               <>

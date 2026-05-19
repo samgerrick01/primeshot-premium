@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { useCallback } from 'react';
 
 // ============================================================
 // Types
@@ -9,6 +8,18 @@ import { useCallback } from 'react';
 export interface Diameter {
   id: number;
   value: string;
+  created_at: string;
+}
+
+export interface Grain {
+  id: number;
+  value: string;
+  created_at: string;
+}
+
+export interface Category {
+  id: number;
+  name: string;
   created_at: string;
 }
 
@@ -57,6 +68,8 @@ export interface DashboardData {
 
 export const QUERY_KEYS = {
   diameters: ['diameters'] as const,
+  grains: ['grains'] as const,
+  categories: ['categories'] as const,
   orders: ['orders'] as const,
   orderItems: (orderId: number) => ['orderItems', orderId] as const,
   profiles: ['profiles'] as const,
@@ -93,7 +106,7 @@ export function useDashboard() {
   return useQuery({
     queryKey: QUERY_KEYS.dashboard,
     queryFn: fetchDashboardData,
-    staleTime: 30_000, // 30s
+    staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
 }
@@ -159,7 +172,6 @@ export function useUpdateOrderStatus() {
       if (error) throw error;
     },
     onMutate: async ({ orderId, newStatus }) => {
-      // Optimistic update
       await queryClient.cancelQueries({ queryKey: QUERY_KEYS.orders });
       const previousOrders = queryClient.getQueryData<Order[]>(
         QUERY_KEYS.orders,
@@ -172,7 +184,6 @@ export function useUpdateOrderStatus() {
       return { previousOrders };
     },
     onError: (_err, _vars, context) => {
-      // Rollback
       if (context?.previousOrders) {
         queryClient.setQueryData(QUERY_KEYS.orders, context.previousOrders);
       }
@@ -229,7 +240,6 @@ export function useDeleteDiameter() {
       const { error } = await supabase.from('diameters').delete().eq('id', id);
       if (error) {
         console.error('[adminQueries] deleteDiameter error:', error);
-        // Check if foreign key violation (product still using this diameter)
         if (error.message?.includes('foreign key constraint')) {
           throw new Error(
             'Cannot delete: This diameter is still being used by one or more products.',
@@ -301,7 +311,6 @@ export function useDeleteProfile() {
       const { error } = await supabase.from('profiles').delete().eq('id', id);
       if (error) {
         console.error('[adminQueries] deleteProfile error:', error);
-        // Check for RLS / permission errors
         if (
           error.message?.includes('permission denied') ||
           error.message?.includes('policy')
@@ -333,6 +342,169 @@ export function useAddProduct() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
+    },
+  });
+}
+
+export function useDeleteProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number | string) => {
+      const { error } = await supabase.from('products').delete().eq('id', id);
+      if (error) {
+        console.error('[adminQueries] deleteProduct error:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+}
+
+export function useUpdateProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: number | string;
+      updates: Record<string, any>;
+    }) => {
+      const { error } = await supabase
+        .from('products')
+        .update(updates)
+        .eq('id', id);
+      if (error) {
+        console.error('[adminQueries] updateProduct error:', error);
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+}
+
+// ============================================================
+// Grains
+// ============================================================
+
+async function fetchGrains(): Promise<Grain[]> {
+  const { data, error } = await supabase
+    .from('grains')
+    .select('*')
+    .order('id', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export function useGrains() {
+  return useQuery({
+    queryKey: QUERY_KEYS.grains,
+    queryFn: fetchGrains,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useAddGrain() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (value: string) => {
+      const { error } = await supabase.from('grains').insert({ value });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.grains });
+    },
+  });
+}
+
+export function useDeleteGrain() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase.from('grains').delete().eq('id', id);
+      if (error) {
+        console.error('[adminQueries] deleteGrain error:', error);
+        if (error.message?.includes('foreign key constraint')) {
+          throw new Error(
+            'Cannot delete: This grain is still being used by one or more products.',
+          );
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.grains });
+    },
+  });
+}
+
+// ============================================================
+// Categories
+// ============================================================
+
+async function fetchCategories(): Promise<Category[]> {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('*')
+    .order('id', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export function useCategories() {
+  return useQuery({
+    queryKey: QUERY_KEYS.categories,
+    queryFn: fetchCategories,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useAddCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const { error } = await supabase.from('categories').insert({ name });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.categories });
+    },
+  });
+}
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase.from('categories').delete().eq('id', id);
+      if (error) {
+        console.error('[adminQueries] deleteCategory error:', error);
+        if (error.message?.includes('foreign key constraint')) {
+          throw new Error(
+            'Cannot delete: This category is still being used by one or more products.',
+          );
+        }
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.categories });
     },
   });
 }

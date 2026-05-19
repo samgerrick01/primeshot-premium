@@ -12,10 +12,11 @@ export function Shop() {
 
   const filteredProducts = products?.filter((product) => {
     const matchesSearch =
-      product.name.toLowerCase().includes(search.toLowerCase()) ||
-      product.description.toLowerCase().includes(search.toLowerCase());
+      (product.name || '').toLowerCase().includes(search.toLowerCase()) ||
+      (product.description || '').toLowerCase().includes(search.toLowerCase());
     const matchesCategory =
-      selectedCategory === 'All' || product.category === selectedCategory;
+      selectedCategory === 'All' ||
+      (product.category && product.category === selectedCategory);
     return matchesSearch && matchesCategory;
   });
 

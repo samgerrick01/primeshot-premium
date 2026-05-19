@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -11,6 +11,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useDashboard } from '@/hooks/adminQueries';
+import { formatPrice } from '@/utils/format';
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-500/20 text-yellow-400',
@@ -38,7 +39,7 @@ export function AdminDashboard() {
       return [
         {
           label: 'Total Revenue',
-          value: '₱0',
+          value: formatPrice(0),
           change: '0%',
           icon: DollarSign,
           color: 'text-green-400',
@@ -81,7 +82,7 @@ export function AdminDashboard() {
     return [
       {
         label: 'Total Revenue',
-        value: `₱${totalRevenue.toLocaleString()}`,
+        value: formatPrice(totalRevenue),
         change: 'Today',
         icon: DollarSign,
         color: 'text-green-400',
@@ -113,14 +114,6 @@ export function AdminDashboard() {
       },
     ];
   }, [data]);
-
-  // Stable callback for navigation
-  const handleNavigation = useCallback(
-    (path: string) => {
-      navigate(path);
-    },
-    [navigate],
-  );
 
   if (isLoading) {
     return (
@@ -225,7 +218,7 @@ export function AdminDashboard() {
                         {order.customer_name || 'Guest'}
                       </td>
                       <td className="py-3 px-2 text-dark-text-primary text-right font-medium">
-                        ₱{Number(order.total).toLocaleString()}
+                        {formatPrice(Number(order.total))}
                       </td>
                       <td className="py-3 px-2 text-right">
                         <span
