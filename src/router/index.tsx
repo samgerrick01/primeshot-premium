@@ -9,7 +9,12 @@ import { Account } from '@/pages/Account';
 import { Cart } from '@/pages/Cart';
 import { ProductDetail } from '@/pages/ProductDetail';
 import { AdminSignIn } from '@/pages/admin/AdminSignIn';
+import { AdminLayout } from '@/pages/admin/AdminLayout';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
+import { AdminOrders } from '@/pages/admin/AdminOrders';
+import { AdminUsers } from '@/pages/admin/AdminUsers';
+import { AdminAddProduct } from '@/pages/admin/AdminAddProduct';
+import { AdminDiameters } from '@/pages/admin/AdminDiameters';
 
 export const router = createBrowserRouter([
   {
@@ -31,7 +36,14 @@ export const router = createBrowserRouter([
     element: <AdminSignIn />,
   },
   {
-    path: '/admin/dashboard',
-    element: <AdminDashboard />,
+    path: '/admin',
+    element: <AdminLayout />,
+    children: [
+      { path: 'dashboard', element: <AdminDashboard /> },
+      { path: 'orders', element: <AdminOrders /> },
+      { path: 'users', element: <AdminUsers /> },
+      { path: 'products/add', element: <AdminAddProduct /> },
+      { path: 'diameters', element: <AdminDiameters /> },
+    ],
   },
 ]);
