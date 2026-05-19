@@ -1,5 +1,8 @@
 import { Target, Award, Users, Crosshair } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ABOUT_STATS } from '@/constants/enums';
+
+const statIcons = [Award, Users, Crosshair, Target];
 
 export function About() {
   return (
@@ -38,22 +41,20 @@ export function About() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {[
-              { icon: Award, label: 'Premium Quality', value: '100%' },
-              { icon: Users, label: 'Happy Customers', value: '10K+' },
-              { icon: Crosshair, label: 'Products Available', value: '100+' },
-              { icon: Target, label: 'Years Experience', value: '15+' },
-            ].map((stat) => (
-              <div key={stat.label} className="card p-6 text-center">
-                <stat.icon className="w-8 h-8 mx-auto text-primary-600 dark:text-primary-400 mb-2" />
-                <p className="text-2xl font-bold text-text-primary dark:text-dark-text-primary">
-                  {stat.value}
-                </p>
-                <p className="text-sm text-text-secondary dark:text-dark-text-secondary">
-                  {stat.label}
-                </p>
-              </div>
-            ))}
+            {ABOUT_STATS.map((stat, index) => {
+              const Icon = statIcons[index];
+              return (
+                <div key={stat.label} className="card p-6 text-center">
+                  <Icon className="w-8 h-8 mx-auto text-primary-600 dark:text-primary-400 mb-2" />
+                  <p className="text-2xl font-bold text-text-primary dark:text-dark-text-primary">
+                    {stat.value}
+                  </p>
+                  <p className="text-sm text-text-secondary dark:text-dark-text-secondary">
+                    {stat.label}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

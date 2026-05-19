@@ -1,7 +1,7 @@
 import { ShoppingCart, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { Product } from '../../types';
-import { useCartStore } from '../../store/cartStore';
+import type { Product } from '@/types';
+import { useCartStore } from '@/store/cartStore';
 
 interface ProductCardProps {
   product: Product;

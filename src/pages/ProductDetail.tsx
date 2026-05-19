@@ -8,8 +8,8 @@ import {
   ChevronLeft,
   Target,
 } from 'lucide-react';
-import { useProduct } from '../hooks/useProducts';
-import { useCartStore } from '../store/cartStore';
+import { useProduct } from '@/hooks/useProducts';
+import { useCartStore } from '@/store/cartStore';
 
 export function ProductDetail() {
   const { id } = useParams<{ id: string }>();

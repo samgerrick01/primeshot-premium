@@ -1,21 +1,13 @@
 import { useState } from 'react';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
-import { useProducts } from '../hooks/useProducts';
-import { ProductCard } from '../components/ui/ProductCard';
-
-const categories = [
-  'All',
-  'Pellets',
-  'Slugs',
-  'Diabolo',
-  'Hollow Point',
-  'Match Grade',
-];
+import { useProducts } from '@/hooks/useProducts';
+import { ProductCard } from '@/components/ui/ProductCard';
+import { PRODUCT_CATEGORIES } from '@/constants/enums';
 
 export function Shop() {
   const { data: products, isLoading } = useProducts();
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [showFilters, setShowFilters] = useState(false);
 
   const filteredProducts = products?.filter((product) => {
@@ -78,7 +70,7 @@ export function Shop() {
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {categories.map((category) => (
+            {PRODUCT_CATEGORIES.map((category) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}

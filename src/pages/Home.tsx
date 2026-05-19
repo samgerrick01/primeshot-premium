@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Target, Shield, Truck, RotateCcw } from 'lucide-react';
-import { useFeaturedProducts } from '../hooks/useProducts';
-import { ProductCard } from '../components/ui/ProductCard';
+import { useFeaturedProducts } from '@/hooks/useProducts';
+import { ProductCard } from '@/components/ui/ProductCard';
+import { FEATURES } from '@/constants/enums';
+
+const featureIcons = [Target, Shield, Truck, RotateCcw];
 
 export function Home() {
   const { data: featuredProducts, isLoading } = useFeaturedProducts();
@@ -49,45 +52,27 @@ export function Home() {
       {/* Features */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-10 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[
-            {
-              icon: Target,
-              title: 'Premium Quality',
-              desc: 'Precision-crafted ammunition',
-            },
-            {
-              icon: Shield,
-              title: 'Consistency',
-              desc: 'Tight tolerances guaranteed',
-            },
-            {
-              icon: Truck,
-              title: 'Free Shipping',
-              desc: 'On orders over $100',
-            },
-            {
-              icon: RotateCcw,
-              title: 'Easy Returns',
-              desc: '30-day satisfaction guarantee',
-            },
-          ].map((feature) => (
-            <div
-              key={feature.title}
-              className="card p-6 flex items-center gap-4"
-            >
-              <div className="p-3 rounded-lg bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
-                <feature.icon className="w-6 h-6" />
+          {FEATURES.map((feature, index) => {
+            const Icon = featureIcons[index];
+            return (
+              <div
+                key={feature.title}
+                className="card p-6 flex items-center gap-4"
+              >
+                <div className="p-3 rounded-lg bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400">
+                  <Icon className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-text-primary dark:text-dark-text-primary">
+                    {feature.title}
+                  </h3>
+                  <p className="text-sm text-text-secondary dark:text-dark-text-secondary">
+                    {feature.description}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold text-text-primary dark:text-dark-text-primary">
-                  {feature.title}
-                </h3>
-                <p className="text-sm text-text-secondary dark:text-dark-text-secondary">
-                  {feature.desc}
-                </p>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

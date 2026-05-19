@@ -13,7 +13,21 @@ import {
   Hash,
   AtSign,
 } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
+import { useAuthStore } from '@/store/authStore';
+import { PROFILE_FIELDS } from '@/constants/enums';
+
+const iconMap: Record<string, React.ElementType> = {
+  User,
+  Mail,
+  Calendar,
+  MapPin,
+  Home,
+  Road,
+  Building2,
+  Globe,
+  Hash,
+  AtSign,
+};
 
 export function Account() {
   const { user, loading, initialize } = useAuthStore();
@@ -42,6 +56,11 @@ export function Account() {
   }
 
   if (!user) return null;
+
+  const getFieldValue = (key: string) => {
+    const value = (user as unknown as Record<string, string | undefined>)[key];
+    return value ? String(value) : 'Not set';
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -81,50 +100,24 @@ export function Account() {
               Personal Information
             </h3>
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <User className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
-                <div>
-                  <p className="text-sm text-text-muted dark:text-dark-text-muted">
-                    First Name
-                  </p>
-                  <p className="text-text-primary dark:text-dark-text-primary">
-                    {user.firstname || 'Not set'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <User className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
-                <div>
-                  <p className="text-sm text-text-muted dark:text-dark-text-muted">
-                    Last Name
-                  </p>
-                  <p className="text-text-primary dark:text-dark-text-primary">
-                    {user.lastname || 'Not set'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <AtSign className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
-                <div>
-                  <p className="text-sm text-text-muted dark:text-dark-text-muted">
-                    Nickname
-                  </p>
-                  <p className="text-text-primary dark:text-dark-text-primary">
-                    {user.nickname || 'Not set'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
-                <div>
-                  <p className="text-sm text-text-muted dark:text-dark-text-muted">
-                    Email
-                  </p>
-                  <p className="text-text-primary dark:text-dark-text-primary">
-                    {user.email}
-                  </p>
-                </div>
-              </div>
+              {PROFILE_FIELDS.PERSONAL.map((field) => {
+                const Icon = iconMap[field.icon];
+                return (
+                  <div key={field.key} className="flex items-center gap-3">
+                    {Icon && (
+                      <Icon className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
+                    )}
+                    <div>
+                      <p className="text-sm text-text-muted dark:text-dark-text-muted">
+                        {field.label}
+                      </p>
+                      <p className="text-text-primary dark:text-dark-text-primary">
+                        {getFieldValue(field.key)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
               <div className="flex items-center gap-3">
                 <Calendar className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
                 <div>
@@ -145,72 +138,24 @@ export function Account() {
               Address Information
             </h3>
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
-                <div>
-                  <p className="text-sm text-text-muted dark:text-dark-text-muted">
-                    Full Address
-                  </p>
-                  <p className="text-text-primary dark:text-dark-text-primary">
-                    {user.full_address || 'Not set'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Home className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
-                <div>
-                  <p className="text-sm text-text-muted dark:text-dark-text-muted">
-                    Street
-                  </p>
-                  <p className="text-text-primary dark:text-dark-text-primary">
-                    {user.street || 'Not set'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Road className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
-                <div>
-                  <p className="text-sm text-text-muted dark:text-dark-text-muted">
-                    Barangay
-                  </p>
-                  <p className="text-text-primary dark:text-dark-text-primary">
-                    {user.barangay || 'Not set'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Building2 className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
-                <div>
-                  <p className="text-sm text-text-muted dark:text-dark-text-muted">
-                    City
-                  </p>
-                  <p className="text-text-primary dark:text-dark-text-primary">
-                    {user.city || 'Not set'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Globe className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
-                <div>
-                  <p className="text-sm text-text-muted dark:text-dark-text-muted">
-                    Province
-                  </p>
-                  <p className="text-text-primary dark:text-dark-text-primary">
-                    {user.province || 'Not set'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Hash className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
-                <div>
-                  <p className="text-sm text-text-muted dark:text-dark-text-muted">
-                    Zip Code
-                  </p>
-                  <p className="text-text-primary dark:text-dark-text-primary">
-                    {user.zipcode || 'Not set'}
-                  </p>
-                </div>
-              </div>
+              {PROFILE_FIELDS.ADDRESS.map((field) => {
+                const Icon = iconMap[field.icon];
+                return (
+                  <div key={field.key} className="flex items-center gap-3">
+                    {Icon && (
+                      <Icon className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
+                    )}
+                    <div>
+                      <p className="text-sm text-text-muted dark:text-dark-text-muted">
+                        {field.label}
+                      </p>
+                      <p className="text-text-primary dark:text-dark-text-primary">
+                        {getFieldValue(field.key)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import type { User } from '../types';
-import { supabase } from '../lib/supabase';
+import type { User } from '@/types';
+import { supabase } from '@/lib/supabase';
+import { USER_ROLE } from '@/constants/enums';
 
 interface AuthState {
   user: User | null;
@@ -44,11 +45,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       data: { user },
     } = await supabase.auth.getUser();
     if (user) {
-      // Fetch profile data from profiles table
+      // Fetch profile data from profiles table using uuid
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('uuid', user.id)
         .single();
 
       set({
@@ -67,7 +68,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           province: profile?.province || '',
           zipcode: profile?.zipcode || '',
           uuid: profile?.uuid || '',
-          role: profile?.role || 'user',
+          role: profile?.role || USER_ROLE.USER,
         },
       });
     }
@@ -89,9 +90,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Step 2: Save profile data to the profiles table
     if (authData.user) {
       const { error: profileError } = await supabase.from('profiles').insert({
-        id: authData.user.id,
         uuid: authData.user.id,
-        role: 'user',
+        role: USER_ROLE.USER,
         firstname: profileData.firstname,
         lastname: profileData.lastname,
         nickname: profileData.nickname,
@@ -120,11 +120,11 @@ export const useAuthStore = create<AuthState>((set) => ({
       data: { session },
     } = await supabase.auth.getSession();
     if (session?.user) {
-      // Fetch profile data from profiles table
+      // Fetch profile data from profiles table using uuid
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', session.user.id)
+        .eq('uuid', session.user.id)
         .single();
 
       set({
@@ -143,7 +143,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           province: profile?.province || '',
           zipcode: profile?.zipcode || '',
           uuid: profile?.uuid || '',
-          role: profile?.role || 'user',
+          role: profile?.role || USER_ROLE.USER,
         },
         loading: false,
       });
@@ -156,7 +156,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', session.user.id)
+          .eq('uuid', session.user.id)
           .single();
 
         set({
@@ -175,7 +175,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             province: profile?.province || '',
             zipcode: profile?.zipcode || '',
             uuid: profile?.uuid || '',
-            role: profile?.role || 'user',
+            role: profile?.role || USER_ROLE.USER,
           },
         });
       } else {

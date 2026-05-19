@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
-import type { Product } from '../types';
+import { supabase } from '@/lib/supabase';
+import type { Product } from '@/types';
 
 export function useProducts() {
   return useQuery<Product[]>({
@@ -12,25 +12,8 @@ export function useProducts() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as Product[];
+      return data;
     },
-  });
-}
-
-export function useProduct(id: string) {
-  return useQuery<Product>({
-    queryKey: ['product', id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      return data as Product;
-    },
-    enabled: !!id,
   });
 }
 
@@ -42,27 +25,27 @@ export function useFeaturedProducts() {
         .from('products')
         .select('*')
         .eq('featured', true)
-        .order('created_at', { ascending: false });
+        .limit(4);
 
       if (error) throw error;
-      return data as Product[];
+      return data;
     },
   });
 }
 
-export function useProductsByCategory(category: string) {
-  return useQuery<Product[]>({
-    queryKey: ['products', 'category', category],
+export function useProduct(id: string) {
+  return useQuery<Product>({
+    queryKey: ['products', id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('category', category)
-        .order('created_at', { ascending: false });
+        .eq('id', id)
+        .single();
 
       if (error) throw error;
-      return data as Product[];
+      return data;
     },
-    enabled: !!category,
+    enabled: !!id,
   });
 }

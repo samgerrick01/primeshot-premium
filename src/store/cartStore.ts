@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { CartItem, Product } from '../types';
+import type { CartItem, Product } from '@/types';
 
 interface CartState {
   items: CartItem[];
@@ -21,58 +21,64 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      addItem: (product, quantity = 1, size, color) =>
+      addItem: (product, quantity = 1, size, color) => {
         set((state) => {
-          const existingIndex = state.items.findIndex(
+          const existingItem = state.items.find(
             (item) =>
               item.product_id === product.id &&
               item.size === size &&
               item.color === color,
           );
 
-          if (existingIndex > -1) {
-            const updated = [...state.items];
-            updated[existingIndex].quantity += quantity;
-            return { items: updated };
+          if (existingItem) {
+            return {
+              items: state.items.map((item) =>
+                item.product_id === product.id &&
+                item.size === size &&
+                item.color === color
+                  ? { ...item, quantity: item.quantity + quantity }
+                  : item,
+              ),
+            };
           }
 
-          return {
-            items: [
-              ...state.items,
-              {
-                id: crypto.randomUUID(),
-                product_id: product.id,
-                product,
-                quantity,
-                size,
-                color,
-              },
-            ],
+          const newItem: CartItem = {
+            id: crypto.randomUUID(),
+            product_id: product.id,
+            product,
+            quantity,
+            size,
+            color,
           };
-        }),
-      removeItem: (productId) =>
+
+          return { items: [...state.items, newItem] };
+        });
+      },
+      removeItem: (productId) => {
         set((state) => ({
           items: state.items.filter((item) => item.product_id !== productId),
-        })),
-      updateQuantity: (productId, quantity) =>
+        }));
+      },
+      updateQuantity: (productId, quantity) => {
         set((state) => ({
           items: state.items.map((item) =>
             item.product_id === productId ? { ...item, quantity } : item,
           ),
-        })),
+        }));
+      },
       clearCart: () => set({ items: [] }),
       getTotal: () => {
-        const state = get();
-        return state.items.reduce(
+        return get().items.reduce(
           (total, item) => total + item.product.price * item.quantity,
           0,
         );
       },
       getItemCount: () => {
-        const state = get();
-        return state.items.reduce((count, item) => count + item.quantity, 0);
+        return get().items.reduce((count, item) => count + item.quantity, 0);
       },
     }),
-    { name: 'primeshot-cart' },
+    {
+      name: 'primeshot-cart',
+    },
   ),
 );

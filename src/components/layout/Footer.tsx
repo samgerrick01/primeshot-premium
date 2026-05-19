@@ -1,5 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Mail, Phone, MapPin, Target, Crosshair, Globe } from 'lucide-react';
+import {
+  FOOTER_QUICK_LINKS,
+  FOOTER_CUSTOMER_SERVICE,
+  CONTACT_INFO,
+} from '@/constants/enums';
 
 export function Footer() {
   return (
@@ -49,13 +54,13 @@ export function Footer() {
               Quick Links
             </h3>
             <ul className="space-y-2">
-              {['Shop', 'Categories', 'About Us', 'Contact'].map((item) => (
-                <li key={item}>
+              {FOOTER_QUICK_LINKS.map((link) => (
+                <li key={link.label}>
                   <Link
-                    to={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
+                    to={link.to}
                     className="text-sm text-text-secondary dark:text-dark-text-secondary hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                   >
-                    {item}
+                    {link.label}
                   </Link>
                 </li>
               ))}
@@ -68,18 +73,13 @@ export function Footer() {
               Customer Service
             </h3>
             <ul className="space-y-2">
-              {[
-                'Shipping & Returns',
-                'FAQ',
-                'Caliber Guide',
-                'Privacy Policy',
-              ].map((item) => (
-                <li key={item}>
+              {FOOTER_CUSTOMER_SERVICE.map((link) => (
+                <li key={link.label}>
                   <Link
-                    to={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
+                    to={link.to}
                     className="text-sm text-text-secondary dark:text-dark-text-secondary hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
                   >
-                    {item}
+                    {link.label}
                   </Link>
                 </li>
               ))}
@@ -94,23 +94,22 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-center gap-2 text-sm text-text-secondary dark:text-dark-text-secondary">
                 <Mail className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                desilva.sam17.sgds@gmail.com
+                {CONTACT_INFO.email}
               </li>
               <li className="flex items-center gap-2 text-sm text-text-secondary dark:text-dark-text-secondary">
                 <Phone className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                +63 948 014 0546
+                {CONTACT_INFO.phone}
               </li>
               <li className="flex items-center gap-2 text-sm text-text-secondary dark:text-dark-text-secondary">
                 <MapPin className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-                Purok 6, Dulangan, San Luis, Batangas, Philippines, 4210
+                {CONTACT_INFO.address}
               </li>
             </ul>
           </div>
         </div>
 
         <div className="mt-10 pt-6 border-t border-border dark:border-dark-border text-center text-sm text-text-muted dark:text-dark-text-muted">
-          &copy; {new Date().getFullYear()} PrimeShot Premium Pellet/Slugs. All
-          rights reserved.
+          &copy; 2025 PrimeShot Premium Pellet/Slugs. All rights reserved.
         </div>
       </div>
     </footer>

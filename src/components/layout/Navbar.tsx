@@ -1,20 +1,14 @@
 import { Link } from 'react-router-dom';
-import { Menu, X, User, LogOut } from 'lucide-react';
+import { Menu, X, User, LogOut, Shield } from 'lucide-react';
 import { useState } from 'react';
-import { ThemeToggle } from '../ui/ThemeToggle';
-import { CartIcon } from '../ui/CartIcon';
-import { useAuthStore } from '../../store/authStore';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { CartIcon } from '@/components/ui/CartIcon';
+import { useAuthStore } from '@/store/authStore';
+import { NAV_LINKS, USER_ROLE } from '@/constants/enums';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, signOut } = useAuthStore();
-
-  const navLinks = [
-    { to: '/', label: 'Home' },
-    { to: '/shop', label: 'Shop' },
-    { to: '/categories', label: 'Categories' },
-    { to: '/about', label: 'About' },
-  ];
 
   return (
     <nav className="sticky top-0 z-50 bg-surface/80 dark:bg-dark-surface/80 backdrop-blur-lg border-b border-border dark:border-dark-border">
@@ -31,7 +25,7 @@ export function Navbar() {
 
           {/* Desktop Nav */}
           <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
+            {NAV_LINKS.map((link) => (
               <Link key={link.to} to={link.to} className="btn-ghost text-sm">
                 {link.label}
               </Link>
@@ -45,6 +39,15 @@ export function Navbar() {
 
             {user ? (
               <div className="hidden md:flex items-center gap-2">
+                {user.role === USER_ROLE.ADMIN && (
+                  <Link
+                    to="/admin/dashboard"
+                    className="btn-ghost p-2 rounded-full"
+                    title="Admin Dashboard"
+                  >
+                    <Shield className="w-5 h-5 text-primary-500" />
+                  </Link>
+                )}
                 <Link to="/account" className="btn-ghost p-2 rounded-full">
                   <User className="w-5 h-5" />
                 </Link>
@@ -84,7 +87,7 @@ export function Navbar() {
       {isOpen && (
         <div className="md:hidden border-t border-border dark:border-dark-border bg-surface dark:bg-dark-surface">
           <div className="px-4 py-3 space-y-1">
-            {navLinks.map((link) => (
+            {NAV_LINKS.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
@@ -97,6 +100,16 @@ export function Navbar() {
             <hr className="border-border dark:border-dark-border my-2" />
             {user ? (
               <>
+                {user.role === USER_ROLE.ADMIN && (
+                  <Link
+                    to="/admin/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-2 btn-ghost w-full text-left"
+                  >
+                    <Shield className="w-4 h-4 text-primary-500" />
+                    Admin Dashboard
+                  </Link>
+                )}
                 <Link
                   to="/account"
                   onClick={() => setIsOpen(false)}

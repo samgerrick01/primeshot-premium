@@ -1,3 +1,5 @@
+import { ORDER_STATUS, THEME } from '@/constants/enums';
+
 export interface Product {
   id: string;
   name: string;
@@ -56,9 +58,9 @@ export interface Order {
   user_id: string;
   items: CartItem[];
   total: number;
-  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: (typeof ORDER_STATUS)[keyof typeof ORDER_STATUS];
   shipping_address: Address;
   created_at: string;
 }
 
-export type Theme = 'light' | 'dark';
+export type Theme = (typeof THEME)[keyof typeof THEME];

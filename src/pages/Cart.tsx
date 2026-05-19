@@ -7,7 +7,7 @@ import {
   ArrowRight,
   Target,
 } from 'lucide-react';
-import { useCartStore } from '../store/cartStore';
+import { useCartStore } from '@/store/cartStore';
 
 export function Cart() {
   const {

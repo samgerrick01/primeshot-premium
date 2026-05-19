@@ -1,39 +1,24 @@
 import { create } from 'zustand';
-import type { Theme } from '../types';
+import { persist } from 'zustand/middleware';
+import type { Theme } from '@/types';
+import { THEME } from '@/constants/enums';
 
 interface ThemeState {
   theme: Theme;
   toggleTheme: () => void;
-  setTheme: (theme: Theme) => void;
 }
 
-function applyTheme(theme: Theme) {
-  const root = document.documentElement;
-  if (theme === 'dark') {
-    root.classList.add('dark');
-  } else {
-    root.classList.remove('dark');
-  }
-}
-
-export const useThemeStore = create<ThemeState>((set) => {
-  // Apply theme on initialization
-  const initialTheme = (localStorage.getItem('theme') as Theme) || 'dark';
-  applyTheme(initialTheme);
-
-  return {
-    theme: initialTheme,
-    toggleTheme: () =>
-      set((state) => {
-        const newTheme = state.theme === 'light' ? 'dark' : 'light';
-        localStorage.setItem('theme', newTheme);
-        applyTheme(newTheme);
-        return { theme: newTheme };
-      }),
-    setTheme: (theme: Theme) => {
-      localStorage.setItem('theme', theme);
-      applyTheme(theme);
-      set({ theme });
+export const useThemeStore = create<ThemeState>()(
+  persist(
+    (set) => ({
+      theme: THEME.LIGHT,
+      toggleTheme: () =>
+        set((state) => ({
+          theme: state.theme === THEME.LIGHT ? THEME.DARK : THEME.LIGHT,
+        })),
+    }),
+    {
+      name: 'primeshot-theme',
     },
-  };
-});
+  ),
+);
