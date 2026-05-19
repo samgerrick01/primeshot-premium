@@ -1,0 +1,108 @@
+@import 'tailwindcss';
+@import '@fontsource/inter/300.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/inter/700.css';
+@import '@fontsource/playfair-display/400.css';
+@import '@fontsource/playfair-display/500.css';
+@import '@fontsource/playfair-display/600.css';
+@import '@fontsource/playfair-display/700.css';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Playfair Display', ui-serif, Georgia, serif;
+
+  /* Green Accent - used sparingly as accent only (#79AE6F, #9FCB98) */
+  --color-primary-50: #f2f7f0;
+  --color-primary-100: #e0efe0;
+  --color-primary-200: #c4dfc4;
+  --color-primary-300: #9fcb98;
+  --color-primary-400: #8abe84;
+  --color-primary-500: #79ae6f;
+  --color-primary-600: #5f9455;
+  --color-primary-700: #4a7742;
+  --color-primary-800: #3d5f37;
+  --color-primary-900: #334e2e;
+
+  /* Warm Peach/Blush Accent */
+  --color-accent-50: #fef7f0;
+  --color-accent-100: #fdecdb;
+  --color-accent-200: #fad5b0;
+  --color-accent-300: #f6b87c;
+  --color-accent-400: #f29a52;
+  --color-accent-500: #ee7d2e;
+  --color-accent-600: #d9641a;
+  --color-accent-700: #b44e15;
+  --color-accent-800: #8f3f16;
+  --color-accent-900: #743514;
+
+  /* LIGHT MODE - Dirty White with subtle green hints */
+  --color-surface: #f5f2ed;
+  --color-surface-secondary: #eeebe5;
+  --color-surface-tertiary: #e8e4dd;
+  --color-border: #d6d2cb;
+  --color-text-primary: #1c1b1a;
+  --color-text-secondary: #5c5a57;
+  --color-text-muted: #9a9792;
+
+  /* DARK MODE - Black with subtle green hints */
+  --color-dark-surface: #0d0d0d;
+  --color-dark-surface-secondary: #1a1a1a;
+  --color-dark-surface-tertiary: #262626;
+  --color-dark-border: #333333;
+  --color-dark-text-primary: #f0efed;
+  --color-dark-text-secondary: #a8a6a3;
+  --color-dark-text-muted: #6b6966;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-surface text-text-primary font-sans transition-colors duration-300;
+  }
+
+  .dark body,
+  body.dark {
+    @apply bg-dark-surface text-dark-text-primary;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2.5 px-5 rounded-lg transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+
+  .btn-secondary {
+    @apply bg-surface-secondary dark:bg-dark-surface-secondary hover:bg-surface-tertiary dark:hover:bg-dark-surface-tertiary text-text-primary dark:text-dark-text-primary font-medium py-2.5 px-5 rounded-lg border border-border dark:border-dark-border transition-all duration-200 active:scale-[0.98];
+  }
+
+  .btn-accent {
+    @apply bg-accent-500 hover:bg-accent-600 text-white font-medium py-2.5 px-5 rounded-lg transition-all duration-200 active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply hover:bg-surface-tertiary dark:hover:bg-dark-surface-tertiary text-text-secondary dark:text-dark-text-secondary font-medium py-2.5 px-5 rounded-lg transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-surface dark:bg-dark-surface-secondary rounded-xl border border-border dark:border-dark-border shadow-sm hover:shadow-md transition-all duration-300;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2.5 rounded-lg border border-border dark:border-dark-border bg-surface dark:bg-dark-surface text-text-primary dark:text-dark-text-primary placeholder:text-text-muted dark:placeholder:text-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200;
+  }
+
+  .section-title {
+    @apply font-serif text-3xl md:text-4xl font-bold text-text-primary dark:text-dark-text-primary;
+  }
+
+  .section-subtitle {
+    @apply text-text-secondary dark:text-dark-text-secondary text-lg;
+  }
+}
