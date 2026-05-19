@@ -26,12 +26,8 @@ export function AdminSignIn() {
   }, [initialize]);
 
   useEffect(() => {
-    if (!loading && user) {
-      if (user.role === USER_ROLE.ADMIN) {
-        navigate('/admin/dashboard');
-      } else {
-        setError('Access denied. Admin credentials required.');
-      }
+    if (!loading && user && user.role === USER_ROLE.ADMIN) {
+      navigate('/admin/dashboard');
     }
   }, [user, loading, navigate]);
 
@@ -40,20 +36,25 @@ export function AdminSignIn() {
     setError(null);
     setIsLoading(true);
 
-    const { error } = await signIn(email, password);
-    if (error) {
-      setError(error);
+    const { error: signInError } = await signIn(email, password);
+    if (signInError) {
+      setError(signInError);
       setIsLoading(false);
       return;
     }
 
+    // Small delay to ensure Zustand state has updated
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     // Check if user is admin after sign in
     const { user: currentUser } = useAuthStore.getState();
-    if (currentUser && currentUser.role !== USER_ROLE.ADMIN) {
-      setError('Access denied. Admin credentials required.');
-      // Sign out non-admin users
-      const { signOut } = useAuthStore.getState();
-      await signOut();
+    if (currentUser) {
+      console.log('[AdminSignIn] currentUser role:', currentUser.role);
+      if (currentUser.role !== USER_ROLE.ADMIN) {
+        setError('Access denied. Admin credentials required.');
+        const { signOut } = useAuthStore.getState();
+        await signOut();
+      }
     }
     setIsLoading(false);
   };

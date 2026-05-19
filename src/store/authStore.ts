@@ -30,6 +30,121 @@ interface AuthState {
   initialize: () => Promise<void>;
 }
 
+async function fetchOrCreateProfile(
+  authUserId: string,
+  email: string,
+): Promise<{
+  firstname: string;
+  lastname: string;
+  nickname: string;
+  full_address: string;
+  street: string;
+  barangay: string;
+  city: string;
+  province: string;
+  zipcode: string;
+  uuid: string;
+  role: string;
+}> {
+  const defaults = {
+    firstname: '',
+    lastname: '',
+    nickname: '',
+    full_address: '',
+    street: '',
+    barangay: '',
+    city: '',
+    province: '',
+    zipcode: '',
+    uuid: '',
+    role: USER_ROLE.USER,
+  };
+
+  try {
+    // Try to find profile by uuid first
+    const { data: uuidProfile, error: uuidError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('uuid', authUserId)
+      .maybeSingle();
+
+    console.log('[fetchOrCreateProfile] uuid lookup:', {
+      uuidProfile,
+      uuidError,
+      authUserId,
+    });
+
+    if (uuidProfile) {
+      console.log(
+        '[fetchOrCreateProfile] Found by UUID, role:',
+        uuidProfile.role,
+      );
+      return {
+        firstname: uuidProfile.firstname || '',
+        lastname: uuidProfile.lastname || '',
+        nickname: uuidProfile.nickname || '',
+        full_address: uuidProfile.full_address || '',
+        street: uuidProfile.street || '',
+        barangay: uuidProfile.barangay || '',
+        city: uuidProfile.city || '',
+        province: uuidProfile.province || '',
+        zipcode: uuidProfile.zipcode || '',
+        uuid: uuidProfile.uuid || '',
+        role: uuidProfile.role || USER_ROLE.USER,
+      };
+    }
+
+    // Fallback: try to find profile by email
+    const { data: emailProfile, error: emailError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+
+    console.log('[fetchOrCreateProfile] email lookup:', {
+      emailProfile,
+      emailError,
+      email,
+    });
+
+    if (emailProfile) {
+      console.log(
+        '[fetchOrCreateProfile] Found by email, role:',
+        emailProfile.role,
+      );
+      // Update the profile's uuid for future lookups
+      await supabase
+        .from('profiles')
+        .update({ uuid: authUserId })
+        .eq('id', emailProfile.id);
+
+      return {
+        firstname: emailProfile.firstname || '',
+        lastname: emailProfile.lastname || '',
+        nickname: emailProfile.nickname || '',
+        full_address: emailProfile.full_address || '',
+        street: emailProfile.street || '',
+        barangay: emailProfile.barangay || '',
+        city: emailProfile.city || '',
+        province: emailProfile.province || '',
+        zipcode: emailProfile.zipcode || '',
+        uuid: emailProfile.uuid || '',
+        role: emailProfile.role || USER_ROLE.USER,
+      };
+    }
+
+    // No profile found at all - return defaults
+    console.log('[fetchOrCreateProfile] No profile found, using defaults');
+    return {
+      ...defaults,
+      uuid: authUserId,
+    };
+  } catch (err) {
+    console.error('[fetchOrCreateProfile] Error:', err);
+    return defaults;
+  }
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   loading: true,
@@ -45,12 +160,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       data: { user },
     } = await supabase.auth.getUser();
     if (user) {
-      // Fetch profile data from profiles table using uuid
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('uuid', user.id)
-        .single();
+      const profile = await fetchOrCreateProfile(user.id, user.email ?? '');
 
       set({
         user: {
@@ -58,20 +168,11 @@ export const useAuthStore = create<AuthState>((set) => ({
           email: user.email ?? '',
           full_name: user.user_metadata?.full_name,
           avatar_url: user.user_metadata?.avatar_url,
-          firstname: profile?.firstname || '',
-          lastname: profile?.lastname || '',
-          nickname: profile?.nickname || '',
-          full_address: profile?.full_address || '',
-          street: profile?.street || '',
-          barangay: profile?.barangay || '',
-          city: profile?.city || '',
-          province: profile?.province || '',
-          zipcode: profile?.zipcode || '',
-          uuid: profile?.uuid || '',
-          role: profile?.role || USER_ROLE.USER,
+          ...profile,
         },
       });
     }
+
     return { error: null };
   },
   signUp: async (email, password, profileData) => {
@@ -120,12 +221,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       data: { session },
     } = await supabase.auth.getSession();
     if (session?.user) {
-      // Fetch profile data from profiles table using uuid
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('uuid', session.user.id)
-        .single();
+      const profile = await fetchOrCreateProfile(
+        session.user.id,
+        session.user.email ?? '',
+      );
 
       set({
         user: {
@@ -133,17 +232,7 @@ export const useAuthStore = create<AuthState>((set) => ({
           email: session.user.email ?? '',
           full_name: session.user.user_metadata?.full_name,
           avatar_url: session.user.user_metadata?.avatar_url,
-          firstname: profile?.firstname || '',
-          lastname: profile?.lastname || '',
-          nickname: profile?.nickname || '',
-          full_address: profile?.full_address || '',
-          street: profile?.street || '',
-          barangay: profile?.barangay || '',
-          city: profile?.city || '',
-          province: profile?.province || '',
-          zipcode: profile?.zipcode || '',
-          uuid: profile?.uuid || '',
-          role: profile?.role || USER_ROLE.USER,
+          ...profile,
         },
         loading: false,
       });
@@ -153,11 +242,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('uuid', session.user.id)
-          .single();
+        const profile = await fetchOrCreateProfile(
+          session.user.id,
+          session.user.email ?? '',
+        );
 
         set({
           user: {
@@ -165,17 +253,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             email: session.user.email ?? '',
             full_name: session.user.user_metadata?.full_name,
             avatar_url: session.user.user_metadata?.avatar_url,
-            firstname: profile?.firstname || '',
-            lastname: profile?.lastname || '',
-            nickname: profile?.nickname || '',
-            full_address: profile?.full_address || '',
-            street: profile?.street || '',
-            barangay: profile?.barangay || '',
-            city: profile?.city || '',
-            province: profile?.province || '',
-            zipcode: profile?.zipcode || '',
-            uuid: profile?.uuid || '',
-            role: profile?.role || USER_ROLE.USER,
+            ...profile,
           },
         });
       } else {
