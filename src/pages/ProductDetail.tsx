@@ -201,7 +201,7 @@ export function ProductDetail() {
               >
                 <Minus className="w-4 h-4" />
               </button>
-              <span className="px-4 font-medium text-text-primary dark:text-dark-text-primary min-w-[3rem] text-center">
+              <span className="px-4 font-medium text-text-primary dark:text-dark-text-primary min-w-12 text-center">
                 {quantity}
               </span>
               <button
