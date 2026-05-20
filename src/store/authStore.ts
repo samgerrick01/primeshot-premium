@@ -28,12 +28,10 @@ interface AuthState {
   ) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<{ error: string | null }>;
 }
 
-async function fetchOrCreateProfile(
-  authUserId: string,
-  email: string,
-): Promise<{
+type ProfileResult = {
   firstname: string;
   lastname: string;
   nickname: string;
@@ -45,8 +43,14 @@ async function fetchOrCreateProfile(
   zipcode: string;
   uuid: string;
   role: string;
-}> {
-  const defaults = {
+};
+
+async function fetchOrCreateProfile(
+  authUserId: string,
+  email: string,
+  user_metadata?: Record<string, any>,
+): Promise<ProfileResult> {
+  const defaults: ProfileResult = {
     firstname: '',
     lastname: '',
     nickname: '',
@@ -79,6 +83,47 @@ async function fetchOrCreateProfile(
         '[fetchOrCreateProfile] Found by UUID, role:',
         uuidProfile.role,
       );
+
+      // If profile was created by the old trigger (empty data), try to
+      // fill it in from the user's metadata
+      const needsBackfill =
+        !uuidProfile.firstname &&
+        !uuidProfile.lastname &&
+        user_metadata?.firstname;
+
+      if (needsBackfill && authUserId) {
+        console.log('[fetchOrCreateProfile] Backfilling profile from metadata');
+        const { error } = await supabase.rpc('upsert_profile', {
+          p_uuid: authUserId,
+          p_email: email,
+          p_role: uuidProfile.role || USER_ROLE.USER,
+          p_firstname: user_metadata?.firstname || '',
+          p_lastname: user_metadata?.lastname || '',
+          p_nickname: user_metadata?.nickname || '',
+          p_full_address: user_metadata?.full_address || '',
+          p_street: user_metadata?.street || '',
+          p_barangay: user_metadata?.barangay || '',
+          p_city: user_metadata?.city || '',
+          p_province: user_metadata?.province || '',
+          p_zipcode: user_metadata?.zipcode || '',
+        });
+        if (!error) {
+          return {
+            firstname: user_metadata?.firstname || '',
+            lastname: user_metadata?.lastname || '',
+            nickname: user_metadata?.nickname || '',
+            full_address: user_metadata?.full_address || '',
+            street: user_metadata?.street || '',
+            barangay: user_metadata?.barangay || '',
+            city: user_metadata?.city || '',
+            province: user_metadata?.province || '',
+            zipcode: user_metadata?.zipcode || '',
+            uuid: uuidProfile.uuid || '',
+            role: uuidProfile.role || USER_ROLE.USER,
+          };
+        }
+      }
+
       return {
         firstname: uuidProfile.firstname || '',
         lastname: uuidProfile.lastname || '',
@@ -145,7 +190,23 @@ async function fetchOrCreateProfile(
   }
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+function buildUserObject(
+  sessionUser: import('@supabase/supabase-js').User,
+  profile: ProfileResult,
+): User {
+  return {
+    id: sessionUser.id,
+    email: sessionUser.email ?? '',
+    full_name: sessionUser.user_metadata?.full_name,
+    avatar_url: sessionUser.user_metadata?.avatar_url,
+    ...profile,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let _authListener: any = null;
+
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loading: true,
   setUser: (user) => set({ user }),
@@ -160,105 +221,169 @@ export const useAuthStore = create<AuthState>((set) => ({
       data: { user },
     } = await supabase.auth.getUser();
     if (user) {
-      const profile = await fetchOrCreateProfile(user.id, user.email ?? '');
+      const profile = await fetchOrCreateProfile(
+        user.id,
+        user.email ?? '',
+        user.user_metadata,
+      );
 
       set({
-        user: {
-          id: user.id,
-          email: user.email ?? '',
-          full_name: user.user_metadata?.full_name,
-          avatar_url: user.user_metadata?.avatar_url,
-          ...profile,
-        },
+        user: buildUserObject(user, profile),
       });
     }
 
     return { error: null };
   },
   signUp: async (email, password, profileData) => {
-    // Step 1: Sign up with Supabase Auth
-    const { data: authData, error } = await supabase.auth.signUp({
+    // Sign up with Supabase Auth
+    // Email confirmation is sent by Supabase via Brevo SMTP
+    // (configured in Supabase Dashboard > Authentication > Settings > SMTP Settings)
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: `${profileData.firstname} ${profileData.lastname}`,
+          firstname: profileData.firstname,
+          lastname: profileData.lastname,
+          nickname: profileData.nickname,
+          full_address: profileData.full_address,
+          street: profileData.street,
+          barangay: profileData.barangay,
+          city: profileData.city,
+          province: profileData.province,
+          zipcode: profileData.zipcode,
         },
       },
     });
     if (error) return { error: error.message };
 
-    // Step 2: Save profile data to the profiles table
-    if (authData.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        uuid: authData.user.id,
-        role: USER_ROLE.USER,
-        firstname: profileData.firstname,
-        lastname: profileData.lastname,
-        nickname: profileData.nickname,
-        full_address: profileData.full_address,
-        street: profileData.street,
-        barangay: profileData.barangay,
-        city: profileData.city,
-        province: profileData.province,
-        zipcode: profileData.zipcode,
-        email: email,
-      });
-
-      if (profileError) {
-        return { error: profileError.message };
+    // Immediately try to upsert the profile so all metadata is saved
+    if (data?.user?.id) {
+      try {
+        await supabase.rpc('upsert_profile', {
+          p_uuid: data.user.id,
+          p_email: email,
+          p_role: USER_ROLE.USER,
+          p_firstname: profileData.firstname,
+          p_lastname: profileData.lastname,
+          p_nickname: profileData.nickname,
+          p_full_address: profileData.full_address,
+          p_street: profileData.street,
+          p_barangay: profileData.barangay,
+          p_city: profileData.city,
+          p_province: profileData.province,
+          p_zipcode: profileData.zipcode,
+        });
+      } catch (upsertErr) {
+        console.error('[signUp] Failed to upsert profile:', upsertErr);
       }
     }
 
     return { error: null };
   },
   signOut: async () => {
-    await supabase.auth.signOut();
+    // Always clear user state first, even if Supabase API call fails
     set({ user: null });
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('[signOut] Error signing out:', err);
+    }
   },
   initialize: async () => {
+    // Get current session
     const {
       data: { session },
     } = await supabase.auth.getSession();
+
     if (session?.user) {
       const profile = await fetchOrCreateProfile(
         session.user.id,
         session.user.email ?? '',
+        session.user.user_metadata,
       );
 
       set({
-        user: {
-          id: session.user.id,
-          email: session.user.email ?? '',
-          full_name: session.user.user_metadata?.full_name,
-          avatar_url: session.user.user_metadata?.avatar_url,
-          ...profile,
-        },
+        user: buildUserObject(session.user, profile),
         loading: false,
       });
     } else {
       set({ loading: false });
     }
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        const profile = await fetchOrCreateProfile(
-          session.user.id,
-          session.user.email ?? '',
-        );
+    // Clean up previous listener to avoid duplicates
+    if (_authListener) {
+      _authListener.subscription.unsubscribe();
+    }
 
-        set({
-          user: {
-            id: session.user.id,
-            email: session.user.email ?? '',
-            full_name: session.user.user_metadata?.full_name,
-            avatar_url: session.user.user_metadata?.avatar_url,
-            ...profile,
-          },
-        });
-      } else {
-        set({ user: null });
-      }
-    });
+    // Listen for auth state changes (including after email confirmation auto-login)
+    const { data } = supabase.auth.onAuthStateChange(
+
+      async (event, session) => {
+        console.log('[onAuthStateChange] event:', event, 'session:', !!session);
+
+        if (event === 'SIGNED_OUT') {
+          set({ user: null, loading: false });
+          return;
+        }
+
+        if (
+          event === 'SIGNED_IN' ||
+          event === 'TOKEN_REFRESHED' ||
+          event === 'INITIAL_SESSION'
+        ) {
+          if (session?.user) {
+            const profile = await fetchOrCreateProfile(
+              session.user.id,
+              session.user.email ?? '',
+              session.user.user_metadata,
+            );
+
+            set({
+              user: buildUserObject(session.user, profile),
+              loading: false,
+            });
+          }
+        }
+      },
+    );
+
+    _authListener = data;
+  },
+  updateProfile: async (data: Partial<User>) => {
+    const currentUser = get().user;
+    if (!currentUser?.id) {
+      return { error: 'Not authenticated' };
+    }
+
+    try {
+      const { error } = await supabase.rpc('upsert_profile', {
+        p_uuid: currentUser.id,
+        p_email: currentUser.email,
+        p_role: currentUser.role || USER_ROLE.USER,
+        p_firstname: data.firstname ?? currentUser.firstname ?? '',
+        p_lastname: data.lastname ?? currentUser.lastname ?? '',
+        p_nickname: data.nickname ?? currentUser.nickname ?? '',
+        p_full_address: data.full_address ?? currentUser.full_address ?? '',
+        p_street: data.street ?? currentUser.street ?? '',
+        p_barangay: data.barangay ?? currentUser.barangay ?? '',
+        p_city: data.city ?? currentUser.city ?? '',
+        p_province: data.province ?? currentUser.province ?? '',
+        p_zipcode: data.zipcode ?? currentUser.zipcode ?? '',
+      });
+
+      if (error) return { error: error.message };
+
+      // Update local state with new values
+      set({
+        user: { ...currentUser, ...data },
+      });
+
+      return { error: null };
+    } catch (err: any) {
+      console.error('[updateProfile] Error:', err);
+      return { error: err?.message || 'Failed to update profile' };
+    }
   },
 }));

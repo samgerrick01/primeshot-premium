@@ -63,13 +63,39 @@ export function ShippingReturns() {
               Shipping Fees
             </h3>
             <p className="text-text-secondary dark:text-dark-text-secondary mb-3">
-              We offer{' '}
-              <strong className="text-primary-600 dark:text-primary-400">
-                FREE SHIPPING
-              </strong>{' '}
-              on all orders nationwide! We believe in making premium ammunition
-              accessible to all airgun enthusiasts across the Philippines.
+              Shipping fees are based on your delivery location:
             </p>
+            <ul className="space-y-2 text-text-secondary dark:text-dark-text-secondary mb-4">
+              <li className="flex items-start gap-2">
+                <span className="text-primary-600 dark:text-primary-400 mt-1">
+                  •
+                </span>
+                <span>
+                  <strong>Luzon:</strong> ₱100
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary-600 dark:text-primary-400 mt-1">
+                  •
+                </span>
+                <span>
+                  <strong>Visayas:</strong> ₱150
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-primary-600 dark:text-primary-400 mt-1">
+                  •
+                </span>
+                <span>
+                  <strong>Mindanao:</strong> ₱200
+                </span>
+              </li>
+            </ul>
+            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+              <p className="text-green-800 dark:text-green-200 font-semibold">
+                🎉 FREE SHIPPING on orders with 3 items or more!
+              </p>
+            </div>
           </div>
 
           <div className="card p-6">

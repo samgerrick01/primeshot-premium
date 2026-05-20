@@ -137,12 +137,49 @@ export const PROFILE_FIELDS = {
 // ============================================================
 
 export const ORDER_STATUS = {
-  PENDING: 'pending',
-  PROCESSING: 'processing',
-  SHIPPED: 'shipped',
+  FOR_VERIFICATION: 'for_verification',
+  PAID: 'paid',
+  PREPARING: 'preparing',
+  TO_SHIP: 'to_ship',
+  IN_TRANSIT: 'in_transit',
   DELIVERED: 'delivered',
   CANCELLED: 'cancelled',
 } as const;
+
+export const ORDER_STATUS_LABELS = {
+  for_verification: 'For Verification',
+  paid: 'Paid',
+  preparing: 'Preparing',
+  to_ship: 'To Ship',
+  in_transit: 'In Transit',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+} as const;
+
+// ============================================================
+// Payment & Shipping
+// ============================================================
+
+export const PAYMENT_INFO = {
+  GCASH_NAME: 'Sam Gerrick De Silva',
+  GCASH_NUMBER: '09480140546',
+  SESSION_DURATION: 60, // minutes
+} as const;
+
+export const SHIPPING_FEES = {
+  LUZON: 100,
+  VISAYAS: 150,
+  MINDANAO: 200,
+  FREE_SHIPPING_THRESHOLD: 3, // items
+} as const;
+
+export const COURIER_SERVICES = [
+  'Flash Express',
+  'J&T Express',
+  'LBC',
+  'Ninja Van',
+  'Other',
+] as const;
 
 // ============================================================
 // Theme

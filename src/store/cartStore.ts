@@ -142,6 +142,20 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'primeshot-cart',
+      partialize: (state) => ({
+        ...state,
+        selectedItems: Array.from(state.selectedItems),
+      }),
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...(persistedState as {
+          items: CartItem[];
+          selectedItems: string[];
+        }),
+        selectedItems: new Set<string>(
+          (persistedState as { selectedItems: string[] }).selectedItems || [],
+        ),
+      }),
     },
   ),
 );

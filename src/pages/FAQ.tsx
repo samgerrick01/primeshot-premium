@@ -19,7 +19,7 @@ const faqs = [
       },
       {
         q: 'What payment methods do you accept?',
-        a: 'We accept various payment methods including bank transfer, GCash, PayMaya, and cash on delivery (COD) for select areas. All transactions are secure and protected.',
+        a: 'We accept GCash payments only. Payment must be made first before order processing. You will receive GCash payment details during checkout, and you need to upload your payment receipt for verification.',
       },
     ],
   },
@@ -27,8 +27,8 @@ const faqs = [
     category: 'Products',
     questions: [
       {
-        q: 'What calibers do you offer?',
-        a: 'We offer a wide range of calibers including .177 (4.5mm), .22 (5.5mm), .25 (6.35mm), and .30 (7.62mm). Each caliber is available in various grain weights to suit different airguns and shooting applications.',
+        q: 'Do you offer free shipping?',
+        a: 'Shipping fees vary by region: Luzon ₱100, Visayas ₱150, Mindanao ₱200. However, orders with 3 items or more qualify for FREE SHIPPING nationwide!',
       },
       {
         q: 'Are your pellets and slugs made locally?',

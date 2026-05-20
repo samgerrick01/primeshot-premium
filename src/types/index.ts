@@ -59,9 +59,22 @@ export interface Order {
   id: string;
   user_id: string;
   items: CartItem[];
+  subtotal: number;
+  shipping_fee: number;
   total: number;
   status: (typeof ORDER_STATUS)[keyof typeof ORDER_STATUS];
   shipping_address: Address;
+  payment_receipt_url?: string;
+  tracking_number?: string;
+  courier_service?: string;
+  created_at: string;
+  updated_at?: string;
+  payment_verified_at?: string;
+}
+
+export interface PaymentSession {
+  order_id: string;
+  expires_at: string;
   created_at: string;
 }
 
