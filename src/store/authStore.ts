@@ -358,22 +358,43 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     try {
-      const { error } = await supabase.rpc('upsert_profile', {
-        p_uuid: currentUser.id,
-        p_email: currentUser.email,
-        p_role: currentUser.role || USER_ROLE.USER,
-        p_firstname: data.firstname ?? currentUser.firstname ?? '',
-        p_lastname: data.lastname ?? currentUser.lastname ?? '',
-        p_nickname: data.nickname ?? currentUser.nickname ?? '',
-        p_full_address: data.full_address ?? currentUser.full_address ?? '',
-        p_street: data.street ?? currentUser.street ?? '',
-        p_barangay: data.barangay ?? currentUser.barangay ?? '',
-        p_city: data.city ?? currentUser.city ?? '',
-        p_province: data.province ?? currentUser.province ?? '',
-        p_zipcode: data.zipcode ?? currentUser.zipcode ?? '',
-      });
+      // Use direct update since the user IS authenticated (on Account page)
+      // RLS will match by uuid = auth.uid()
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          firstname: data.firstname ?? currentUser.firstname ?? '',
+          lastname: data.lastname ?? currentUser.lastname ?? '',
+          nickname: data.nickname ?? currentUser.nickname ?? '',
+          full_address: data.full_address ?? currentUser.full_address ?? '',
+          street: data.street ?? currentUser.street ?? '',
+          barangay: data.barangay ?? currentUser.barangay ?? '',
+          city: data.city ?? currentUser.city ?? '',
+          province: data.province ?? currentUser.province ?? '',
+          zipcode: data.zipcode ?? currentUser.zipcode ?? '',
+        })
+        .eq('uuid', currentUser.id);
 
-      if (error) return { error: error.message };
+      if (error) {
+        // Fallback: try RPC if direct update fails (e.g., RLS issue)
+        console.warn('[updateProfile] Direct update failed, trying RPC:', error.message);
+        const { error: rpcError } = await supabase.rpc('upsert_profile', {
+          p_uuid: currentUser.id,
+          p_email: currentUser.email,
+          p_role: currentUser.role || USER_ROLE.USER,
+          p_firstname: data.firstname ?? currentUser.firstname ?? '',
+          p_lastname: data.lastname ?? currentUser.lastname ?? '',
+          p_nickname: data.nickname ?? currentUser.nickname ?? '',
+          p_full_address: data.full_address ?? currentUser.full_address ?? '',
+          p_street: data.street ?? currentUser.street ?? '',
+          p_barangay: data.barangay ?? currentUser.barangay ?? '',
+          p_city: data.city ?? currentUser.city ?? '',
+          p_province: data.province ?? currentUser.province ?? '',
+          p_zipcode: data.zipcode ?? currentUser.zipcode ?? '',
+        });
+
+        if (rpcError) return { error: rpcError.message };
+      }
 
       // Update local state with new values
       set({
@@ -386,4 +407,5 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return { error: err?.message || 'Failed to update profile' };
     }
   },
+
 }));

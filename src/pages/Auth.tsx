@@ -7,12 +7,8 @@ import { useAuthStore } from '@/store/authStore';
 
 export function Auth() {
   const [isSignIn, setIsSignIn] = useState(true);
-  const { user, loading, initialize } = useAuthStore();
+  const { user, loading } = useAuthStore();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
 
   useEffect(() => {
     if (!loading && user) {
