@@ -1,4 +1,5 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+
 import {
   ShoppingCart,
   Trash2,
@@ -29,6 +30,7 @@ export function Cart() {
     getSelectedItemCount,
   } = useCartStore();
 
+  const navigate = useNavigate();
   const allSelected =
     items.length > 0 && items.every((item) => selectedItems.has(item.id));
   const someSelected = selectedItems.size > 0;
@@ -256,6 +258,7 @@ export function Cart() {
             <button
               className="btn-primary w-full mt-6 flex items-center justify-center gap-2"
               disabled={someSelected && selectedItems.size === 0}
+              onClick={() => navigate('/checkout')}
             >
               Proceed to Checkout {someSelected && `(${selectedItems.size})`}
               <ArrowRight className="w-4 h-4" />

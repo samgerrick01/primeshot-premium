@@ -38,9 +38,13 @@ export interface Order {
   status: string;
   shipping_address: string | null;
   notes: string | null;
+  tracking_number: string | null;
+  courier_service: string | null;
+  payment_receipt_url: string | null;
   created_at: string;
   items?: OrderItem[];
 }
+
 
 export interface OrderItem {
   id: number;
@@ -201,6 +205,59 @@ export function useUpdateOrderStatus() {
     },
   });
 }
+
+export function useUpdateOrderTracking() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      orderId,
+      tracking_number,
+      courier_service,
+    }: {
+      orderId: number;
+      tracking_number: string;
+      courier_service: string;
+    }) => {
+      const { error } = await supabase
+        .from('orders')
+        .update({
+          tracking_number,
+          courier_service,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+    },
+    onMutate: async ({ orderId, tracking_number, courier_service }) => {
+      await queryClient.cancelQueries({ queryKey: QUERY_KEYS.orders });
+      const previousOrders = queryClient.getQueryData<Order[]>(
+        QUERY_KEYS.orders,
+      );
+
+      queryClient.setQueryData<Order[]>(QUERY_KEYS.orders, (old) =>
+        old?.map((o) =>
+          o.id === orderId
+            ? { ...o, tracking_number, courier_service }
+            : o,
+        ),
+      );
+
+      return { previousOrders };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousOrders) {
+        queryClient.setQueryData(QUERY_KEYS.orders, context.previousOrders);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.orders });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
+    },
+  });
+}
+
 
 // ============================================================
 // Diameters

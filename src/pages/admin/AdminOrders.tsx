@@ -10,37 +10,75 @@ import {
   Truck,
   XCircle,
   Package,
+  ExternalLink,
+  Save,
+  Eye,
 } from 'lucide-react';
 import {
   useOrders,
   useOrderItems,
   useUpdateOrderStatus,
+  useUpdateOrderTracking,
 } from '@/hooks/adminQueries';
 import { useToast } from '@/components/Toast';
 import { formatPrice } from '@/utils/format';
 
+// ── Status Flow ────────────────────────────────────────────────
+// for_verification → paid → preparing → to_ship → in_transit → done
+//                                                                 ↓
+//                                                             cancelled
+
+type StatusKey =
+  | 'for_verification'
+  | 'paid'
+  | 'preparing'
+  | 'to_ship'
+  | 'in_transit'
+  | 'done'
+  | 'cancelled';
+
+const NEXT_STATUS: Record<StatusKey, StatusKey[]> = {
+  for_verification: ['paid', 'cancelled'],
+  paid: ['preparing', 'cancelled'],
+  preparing: ['to_ship', 'cancelled'],
+  to_ship: ['in_transit', 'cancelled'],
+  in_transit: ['done', 'cancelled'],
+  done: [],
+  cancelled: [],
+};
+
 const statusConfig: Record<
-  string,
+  StatusKey,
   { label: string; color: string; icon: any }
 > = {
-  pending: {
-    label: 'Pending',
-    color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+  for_verification: {
+    label: 'For Verification',
+    color: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     icon: Clock,
   },
-  processing: {
-    label: 'Processing',
+  paid: {
+    label: 'Paid',
+    color: 'bg-green-500/20 text-green-400 border-green-500/30',
+    icon: CheckCircle,
+  },
+  preparing: {
+    label: 'Preparing',
     color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
     icon: Package,
   },
-  shipped: {
-    label: 'Shipped',
+  to_ship: {
+    label: 'To Ship',
+    color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+    icon: Truck,
+  },
+  in_transit: {
+    label: 'In Transit',
     color: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
     icon: Truck,
   },
-  delivered: {
-    label: 'Delivered',
-    color: 'bg-green-500/20 text-green-400 border-green-500/30',
+  done: {
+    label: 'Done',
+    color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
     icon: CheckCircle,
   },
   cancelled: {
@@ -53,19 +91,44 @@ const statusConfig: Record<
 export function AdminOrders() {
   const { data: orders, isLoading } = useOrders();
   const { mutateAsync: updateStatus } = useUpdateOrderStatus();
+  const { mutateAsync: updateTracking } = useUpdateOrderTracking();
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
+  // Tracking form state per order
+  const [trackingForms, setTrackingForms] = useState<
+    Record<number, { tracking_number: string; courier_service: string }>
+  >({});
+
   // Only fetch items when an order is expanded
   const { data: expandedItems } = useOrderItems(expandedOrder);
 
   // Stable callback for toggling expanded order
-  const handleToggleExpand = useCallback((orderId: number) => {
-    setExpandedOrder((prev) => (prev === orderId ? null : orderId));
-  }, []);
+  const handleToggleExpand = useCallback(
+    (orderId: number) => {
+      setExpandedOrder((prev) => (prev === orderId ? null : orderId));
+      // Initialize tracking form when expanding
+      setTrackingForms((prev) => {
+        if (!prev[orderId]) {
+          const order = orders?.find((o) => o.id === orderId);
+          if (order) {
+            return {
+              ...prev,
+              [orderId]: {
+                tracking_number: order.tracking_number || '',
+                courier_service: order.courier_service || '',
+              },
+            };
+          }
+        }
+        return prev;
+      });
+    },
+    [orders],
+  );
 
   // Stable callback for updating status
   const handleUpdateStatus = useCallback(
@@ -73,7 +136,8 @@ export function AdminOrders() {
       setUpdatingId(orderId);
       try {
         await updateStatus({ orderId, newStatus });
-        const statusLabel = statusConfig[newStatus]?.label || newStatus;
+        const statusLabel =
+          statusConfig[newStatus as StatusKey]?.label || newStatus;
         showToast(`Order #${orderId} updated to ${statusLabel}!`, 'success');
       } catch (err: any) {
         console.error('[AdminOrders] update error:', err);
@@ -82,6 +146,28 @@ export function AdminOrders() {
       setUpdatingId(null);
     },
     [updateStatus, showToast],
+  );
+
+  // Save tracking info
+  const handleSaveTracking = useCallback(
+    async (orderId: number) => {
+      const form = trackingForms[orderId];
+      if (!form) return;
+      setUpdatingId(orderId);
+      try {
+        await updateTracking({
+          orderId,
+          tracking_number: form.tracking_number,
+          courier_service: form.courier_service,
+        });
+        showToast(`Tracking info saved for Order #${orderId}!`, 'success');
+      } catch (err: any) {
+        console.error('[AdminOrders] tracking update error:', err);
+        showToast(err?.message || 'Failed to save tracking info', 'error');
+      }
+      setUpdatingId(null);
+    },
+    [trackingForms, updateTracking, showToast],
   );
 
   // Memoized filtered + sorted orders
@@ -94,7 +180,8 @@ export function AdminOrders() {
         order.customer_email
           ?.toLowerCase()
           .includes(searchTerm.toLowerCase()) ||
-        order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase());
+        order.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.tracking_number?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesStatus =
         statusFilter === 'all' || order.status === statusFilter;
@@ -134,7 +221,7 @@ export function AdminOrders() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by order ID, email, or name..."
+            placeholder="Search by order ID, email, name, or tracking..."
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
           />
         </div>
@@ -170,8 +257,10 @@ export function AdminOrders() {
         <div className="space-y-3">
           {filteredOrders.map((order) => {
             const statusInfo =
-              statusConfig[order.status] || statusConfig.pending;
+              statusConfig[order.status as StatusKey] ||
+              statusConfig.for_verification;
             const StatusIcon = statusInfo.icon;
+            const nextStatuses = NEXT_STATUS[order.status as StatusKey] || [];
 
             return (
               <div
@@ -197,6 +286,12 @@ export function AdminOrders() {
                           <StatusIcon className="w-3 h-3" />
                           {statusInfo.label}
                         </span>
+                        {order.tracking_number && (
+                          <span className="inline-flex items-center gap-1 text-xs text-dark-text-muted">
+                            <Truck className="w-3 h-3" />
+                            {order.tracking_number}
+                          </span>
+                        )}
                       </div>
                     </div>
 
@@ -260,8 +355,115 @@ export function AdminOrders() {
                       </div>
                     ) : (
                       <p className="text-sm text-dark-text-muted mb-4">
-                        No items details available
+                        No item details available
                       </p>
+                    )}
+
+                    {/* Shipping Address */}
+                    {order.shipping_address && (
+                      <div className="mb-4">
+                        <p className="text-xs font-medium text-dark-text-muted uppercase tracking-wider mb-1">
+                          Shipping Address
+                        </p>
+                        <p className="text-sm text-dark-text-primary">
+                          {order.shipping_address}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Payment Receipt */}
+                    {order.payment_receipt_url && (
+                      <div className="mb-4">
+                        <p className="text-xs font-medium text-dark-text-muted uppercase tracking-wider mb-1">
+                          Payment Receipt
+                        </p>
+                        <a
+                          href={order.payment_receipt_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm text-primary-400 hover:text-primary-300 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                          View Receipt
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Tracking Info (editable when status is to_ship, in_transit, or done) */}
+                    {['to_ship', 'in_transit', 'done'].includes(
+                      order.status,
+                    ) && (
+                      <div className="mb-4 p-3 rounded-lg bg-dark-surface border border-dark-border">
+                        <p className="text-xs font-medium text-dark-text-muted uppercase tracking-wider mb-2">
+                          Tracking Information
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                          <div>
+                            <label className="block text-xs text-dark-text-muted mb-1">
+                              Courier Service
+                            </label>
+                            <select
+                              value={
+                                trackingForms[order.id]?.courier_service || ''
+                              }
+                              onChange={(e) =>
+                                setTrackingForms((prev) => ({
+                                  ...prev,
+                                  [order.id]: {
+                                    ...prev[order.id],
+                                    courier_service: e.target.value,
+                                  },
+                                }))
+                              }
+                              className="w-full text-sm px-3 py-1.5 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            >
+                              <option value="">Select courier</option>
+                              <option value="Flash Express">
+                                Flash Express
+                              </option>
+                              <option value="J&T Express">J&T Express</option>
+                              <option value="LBC">LBC</option>
+                              <option value="Ninja Van">Ninja Van</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-dark-text-muted mb-1">
+                              Tracking Number
+                            </label>
+                            <input
+                              type="text"
+                              value={
+                                trackingForms[order.id]?.tracking_number || ''
+                              }
+                              onChange={(e) =>
+                                setTrackingForms((prev) => ({
+                                  ...prev,
+                                  [order.id]: {
+                                    ...prev[order.id],
+                                    tracking_number: e.target.value,
+                                  },
+                                }))
+                              }
+                              placeholder="Enter tracking number"
+                              className="w-full text-sm px-3 py-1.5 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleSaveTracking(order.id)}
+                          disabled={updatingId === order.id}
+                          className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-primary-500/20 text-primary-400 hover:bg-primary-500/30 transition-colors"
+                        >
+                          {updatingId === order.id ? (
+                            <div className="w-3 h-3 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Save className="w-3 h-3" />
+                          )}
+                          Save Tracking
+                        </button>
+                      </div>
                     )}
 
                     {/* Status Update */}
@@ -274,12 +476,18 @@ export function AdminOrders() {
                         onChange={(e) =>
                           handleUpdateStatus(order.id, e.target.value)
                         }
-                        disabled={updatingId === order.id}
+                        disabled={
+                          updatingId === order.id || nextStatuses.length === 0
+                        }
                         className="text-sm px-3 py-1.5 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500"
                       >
-                        {Object.entries(statusConfig).map(([key, config]) => (
-                          <option key={key} value={key}>
-                            {config.label}
+                        <option value={order.status}>
+                          {statusConfig[order.status as StatusKey]?.label ||
+                            order.status}
+                        </option>
+                        {nextStatuses.map((status) => (
+                          <option key={status} value={status}>
+                            {statusConfig[status]?.label || status}
                           </option>
                         ))}
                       </select>
@@ -296,7 +504,7 @@ export function AdminOrders() {
       )}
 
       {/* Summary */}
-      <div className="mt-6 grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {Object.entries(statusConfig).map(([key, config]) => {
           const count = (orders ?? []).filter((o) => o.status === key).length;
           const Icon = config.icon;

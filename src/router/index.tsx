@@ -7,6 +7,9 @@ import { About } from '@/pages/About';
 import { Auth } from '@/pages/Auth';
 import { Account } from '@/pages/Account';
 import { Cart } from '@/pages/Cart';
+import { Checkout } from '@/pages/Checkout';
+import { OrderConfirmation } from '@/pages/OrderConfirmation';
+import { PaymentSession } from '@/pages/PaymentSession';
 import { ProductDetail } from '@/pages/ProductDetail';
 import { NotFound } from '@/pages/NotFound';
 import { FAQ } from '@/pages/FAQ';
@@ -38,6 +41,9 @@ export const router = createBrowserRouter([
       { path: 'auth', element: <Auth /> },
       { path: 'account', element: <Account /> },
       { path: 'cart', element: <Cart /> },
+      { path: 'checkout', element: <Checkout /> },
+      { path: 'order-confirmation/:id', element: <OrderConfirmation /> },
+      { path: 'payment-session', element: <PaymentSession /> },
       { path: 'product/:id', element: <ProductDetail /> },
       { path: 'faq', element: <FAQ /> },
       { path: 'shipping-returns', element: <ShippingReturns /> },
