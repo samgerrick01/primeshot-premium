@@ -1,20 +1,27 @@
 import { useState, useCallback } from 'react';
-import { Weight, Plus, Trash2, AlertTriangle } from 'lucide-react';
-import { useGrains, useAddGrain, useDeleteGrain } from '@/hooks/adminQueries';
+import { Target, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import {
+  useCalibers,
+  useAddCaliber,
+  useDeleteCaliber,
+} from '@/hooks/adminQueries';
 import { useToast } from '@/components/Toast';
 
-export function AdminGrains() {
-  const { data: grains, isLoading } = useGrains();
-  const { mutateAsync: addGrain, isPending: isAdding } = useAddGrain();
-  const { mutateAsync: deleteGrain, isPending: isDeleting } = useDeleteGrain();
+export function AdminCalibers() {
+  const { data: calibers, isLoading } = useCalibers();
+  const { mutateAsync: addCaliber, isPending: isAdding } = useAddCaliber();
+  const { mutateAsync: deleteCaliber, isPending: isDeleting } =
+    useDeleteCaliber();
   const { showToast } = useToast();
-  const [newGrain, setNewGrain] = useState('');
+  const [newCaliber, setNewCaliber] = useState('');
   const [addError, setAddError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{
     id: number;
     value: string;
   } | null>(null);
-  const [selectedGrains, setSelectedGrains] = useState<Set<number>>(new Set());
+  const [selectedCalibers, setSelectedCalibers] = useState<Set<number>>(
+    new Set(),
+  );
   const [deleteMultipleConfirm, setDeleteMultipleConfirm] = useState(false);
 
   const adding = isAdding;
@@ -25,72 +32,74 @@ export function AdminGrains() {
       e.preventDefault();
       setAddError(null);
 
-      const value = newGrain.trim();
+      const value = newCaliber.trim();
       if (!value) {
-        setAddError('Please enter a grain weight value');
+        setAddError('Please enter a caliber value');
         return;
       }
 
       // Check if already exists
-      if (grains?.some((g) => g.value.toLowerCase() === value.toLowerCase())) {
-        setAddError('This grain weight already exists');
+      if (
+        calibers?.some((c) => c.value.toLowerCase() === value.toLowerCase())
+      ) {
+        setAddError('This caliber already exists');
         return;
       }
 
       try {
-        await addGrain(value);
-        setNewGrain('');
-        showToast(`Grain weight "${value}" added successfully!`, 'success');
+        await addCaliber(value);
+        setNewCaliber('');
+        showToast(`Caliber "${value}" added successfully!`, 'success');
       } catch (err: any) {
-        console.error('[AdminGrains] add error:', err);
-        const msg = err?.message || 'Failed to add grain weight';
+        console.error('[AdminCalibers] add error:', err);
+        const msg = err?.message || 'Failed to add caliber';
         setAddError(msg);
         showToast(msg, 'error');
       }
     },
-    [newGrain, grains, addGrain, showToast],
+    [newCaliber, calibers, addCaliber, showToast],
   );
 
   const handleDelete = useCallback(async () => {
     if (!deleteConfirm) return;
     try {
-      await deleteGrain(deleteConfirm.id);
+      await deleteCaliber(deleteConfirm.id);
       showToast(
-        `Grain weight "${deleteConfirm.value}" deleted successfully!`,
+        `Caliber "${deleteConfirm.value}" deleted successfully!`,
         'success',
       );
       setDeleteConfirm(null);
     } catch (err: any) {
-      console.error('[AdminGrains] delete error:', err);
-      const msg = err?.message || 'Failed to delete grain weight';
+      console.error('[AdminCalibers] delete error:', err);
+      const msg = err?.message || 'Failed to delete caliber';
       showToast(msg, 'error');
       setDeleteConfirm(null);
     }
-  }, [deleteConfirm, deleteGrain, showToast]);
+  }, [deleteConfirm, deleteCaliber, showToast]);
 
   const handleDeleteMultiple = useCallback(async () => {
-    if (selectedGrains.size === 0) return;
+    if (selectedCalibers.size === 0) return;
     try {
-      const deletePromises = Array.from(selectedGrains).map((id) =>
-        deleteGrain(id),
+      const deletePromises = Array.from(selectedCalibers).map((id) =>
+        deleteCaliber(id),
       );
       await Promise.all(deletePromises);
 
       showToast(
-        `${selectedGrains.size} grain${selectedGrains.size > 1 ? 's' : ''} deleted successfully!`,
+        `${selectedCalibers.size} caliber${selectedCalibers.size > 1 ? 's' : ''} deleted successfully!`,
         'success',
       );
-      setSelectedGrains(new Set());
+      setSelectedCalibers(new Set());
       setDeleteMultipleConfirm(false);
     } catch (err: any) {
-      const msg = err?.message || 'Failed to delete grains';
+      const msg = err?.message || 'Failed to delete calibers';
       showToast(msg, 'error');
       setDeleteMultipleConfirm(false);
     }
-  }, [selectedGrains, deleteGrain, showToast]);
+  }, [selectedCalibers, deleteCaliber, showToast]);
 
-  const toggleSelectGrain = (id: number) => {
-    setSelectedGrains((prev) => {
+  const toggleSelectCaliber = (id: number) => {
+    setSelectedCalibers((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
         newSet.delete(id);
@@ -102,10 +111,10 @@ export function AdminGrains() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedGrains.size === (grains ?? []).length) {
-      setSelectedGrains(new Set());
+    if (selectedCalibers.size === (calibers ?? []).length) {
+      setSelectedCalibers(new Set());
     } else {
-      setSelectedGrains(new Set((grains ?? []).map((g) => g.id)));
+      setSelectedCalibers(new Set((calibers ?? []).map((c) => c.id)));
     }
   };
 
@@ -115,43 +124,43 @@ export function AdminGrains() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-dark-text-primary flex items-center gap-3">
-            <Weight className="w-6 h-6 text-primary-400" />
-            Manage Grains
+            <Target className="w-6 h-6 text-primary-400" />
+            Manage Calibers
           </h1>
           <p className="text-dark-text-secondary mt-1">
-            Add or remove grain weight options for product listings
+            Add or remove caliber options for product listings
           </p>
         </div>
-        {selectedGrains.size > 0 && (
+        {selectedCalibers.size > 0 && (
           <button
             onClick={() => setDeleteMultipleConfirm(true)}
             className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors text-sm flex items-center gap-2"
           >
             <Trash2 className="w-4 h-4" />
-            Delete ({selectedGrains.size})
+            Delete ({selectedCalibers.size})
           </button>
         )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Add New Grain */}
+        {/* Add New Caliber */}
         <div className="lg:col-span-1">
           <div className="bg-dark-surface-secondary rounded-xl border border-dark-border p-5">
             <h2 className="text-base font-semibold text-dark-text-primary mb-4 flex items-center gap-2">
               <Plus className="w-4 h-4 text-primary-400" />
-              Add New Grain Weight
+              Add New Caliber
             </h2>
 
             <form onSubmit={handleAdd} className="space-y-3">
               <div>
                 <input
                   type="text"
-                  value={newGrain}
+                  value={newCaliber}
                   onChange={(e) => {
-                    setNewGrain(e.target.value);
+                    setNewCaliber(e.target.value);
                     setAddError(null);
                   }}
-                  placeholder="e.g., 16, 18, 20, 25"
+                  placeholder="e.g., .177, .22, 4.5mm"
                   className="w-full px-4 py-2.5 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
                 />
               </div>
@@ -166,7 +175,7 @@ export function AdminGrains() {
                 ) : (
                   <>
                     <Plus className="w-4 h-4" />
-                    Add Grain
+                    Add Caliber
                   </>
                 )}
               </button>
@@ -174,29 +183,29 @@ export function AdminGrains() {
 
             <div className="mt-4 p-3 rounded-lg bg-dark-surface border border-dark-border">
               <p className="text-xs text-dark-text-muted">
-                <strong>Tip:</strong> Add grain weight values (e.g., 16, 18, 20,
-                25 grains). These will appear as a dropdown when adding
+                <strong>Tip:</strong> Add caliber values like .177, .22, .25,
+                4.5mm, 5.5mm, etc. These will appear as a dropdown when adding
                 products.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Grains List */}
+        {/* Calibers List */}
         <div className="lg:col-span-2">
           <div className="bg-dark-surface-secondary rounded-xl border border-dark-border overflow-hidden">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="w-8 h-8 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : (grains ?? []).length === 0 ? (
+            ) : (calibers ?? []).length === 0 ? (
               <div className="text-center py-12">
-                <Weight className="w-10 h-10 text-dark-text-muted mx-auto mb-3" />
+                <Target className="w-10 h-10 text-dark-text-muted mx-auto mb-3" />
                 <p className="text-dark-text-secondary">
-                  No grain weights added yet
+                  No calibers added yet
                 </p>
                 <p className="text-xs text-dark-text-muted mt-1">
-                  Add your first grain weight using the form
+                  Add your first caliber using the form
                 </p>
               </div>
             ) : (
@@ -208,8 +217,8 @@ export function AdminGrains() {
                         <input
                           type="checkbox"
                           checked={
-                            selectedGrains.size === (grains ?? []).length &&
-                            (grains ?? []).length > 0
+                            selectedCalibers.size === (calibers ?? []).length &&
+                            (calibers ?? []).length > 0
                           }
                           onChange={toggleSelectAll}
                           className="w-4 h-4 rounded border-dark-border bg-dark-surface text-primary-600 focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 cursor-pointer"
@@ -219,7 +228,7 @@ export function AdminGrains() {
                         ID
                       </th>
                       <th className="text-left py-3 px-4 text-dark-text-muted font-medium text-xs uppercase tracking-wider">
-                        Grain Weight
+                        Caliber Value
                       </th>
                       <th className="text-left py-3 px-4 text-dark-text-muted font-medium text-xs uppercase tracking-wider hidden sm:table-cell">
                         Added
@@ -230,31 +239,31 @@ export function AdminGrains() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(grains ?? []).map((g) => (
+                    {(calibers ?? []).map((c) => (
                       <tr
-                        key={g.id}
+                        key={c.id}
                         className={`border-b border-dark-border/50 hover:bg-dark-surface-tertiary/30 transition-colors ${
-                          selectedGrains.has(g.id) ? 'bg-primary-500/5' : ''
+                          selectedCalibers.has(c.id) ? 'bg-primary-500/5' : ''
                         }`}
                       >
                         <td className="py-3 px-4 text-center">
                           <input
                             type="checkbox"
-                            checked={selectedGrains.has(g.id)}
-                            onChange={() => toggleSelectGrain(g.id)}
+                            checked={selectedCalibers.has(c.id)}
+                            onChange={() => toggleSelectCaliber(c.id)}
                             className="w-4 h-4 rounded border-dark-border bg-dark-surface text-primary-600 focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 cursor-pointer"
                           />
                         </td>
                         <td className="py-3 px-4 text-dark-text-muted">
-                          {g.id}
+                          {c.id}
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-dark-text-primary font-medium">
-                            {g.value} gr
+                            {c.value}
                           </span>
                         </td>
                         <td className="py-3 px-4 text-dark-text-secondary hidden sm:table-cell">
-                          {new Date(g.created_at).toLocaleDateString('en-PH', {
+                          {new Date(c.created_at).toLocaleDateString('en-PH', {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric',
@@ -262,9 +271,9 @@ export function AdminGrains() {
                         </td>
                         <td className="py-3 px-4 text-right">
                           <button
-                            onClick={() => setDeleteConfirm(g)}
+                            onClick={() => setDeleteConfirm(c)}
                             className="p-2 rounded-lg text-dark-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                            title="Delete grain weight"
+                            title="Delete caliber"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -288,15 +297,15 @@ export function AdminGrains() {
                 <AlertTriangle className="w-6 h-6 text-red-400" />
               </div>
               <h3 className="text-lg font-bold text-dark-text-primary">
-                Delete Multiple Grains
+                Delete Multiple Calibers
               </h3>
               <p className="text-sm text-dark-text-secondary mt-2">
                 Are you sure you want to delete{' '}
                 <span className="text-dark-text-primary font-medium">
-                  {selectedGrains.size} grain
-                  {selectedGrains.size > 1 ? 's' : ''}
+                  {selectedCalibers.size} caliber
+                  {selectedCalibers.size > 1 ? 's' : ''}
                 </span>
-                ? This may affect products using these grain weights.
+                ? This may affect products using these calibers.
               </p>
             </div>
 
@@ -333,14 +342,14 @@ export function AdminGrains() {
                 <AlertTriangle className="w-6 h-6 text-red-400" />
               </div>
               <h3 className="text-lg font-bold text-dark-text-primary">
-                Delete Grain Weight
+                Delete Caliber
               </h3>
               <p className="text-sm text-dark-text-secondary mt-2">
                 Are you sure you want to delete{' '}
                 <span className="text-dark-text-primary font-medium">
-                  {deleteConfirm.value} gr
+                  {deleteConfirm.value}
                 </span>
-                ? This may affect products using this grain weight.
+                ? This may affect products using this caliber.
               </p>
             </div>
 

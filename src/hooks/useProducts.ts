@@ -86,3 +86,41 @@ export function useProduct(id: string) {
     enabled: !!id,
   });
 }
+
+export function useProductsByCategory(category: string) {
+  return useQuery<Product[]>({
+    queryKey: ['products', 'category', category],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('category', category)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []).map(mapProduct);
+    },
+    enabled: !!category,
+  });
+}
+
+export function useCategoryCounts() {
+  return useQuery<Record<string, number>>({
+    queryKey: ['products', 'category-counts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('category');
+
+      if (error) throw error;
+
+      const counts: Record<string, number> = {};
+      (data || []).forEach((row) => {
+        const category = row.category as string;
+        counts[category] = (counts[category] || 0) + 1;
+      });
+
+      return counts;
+    },
+  });
+}

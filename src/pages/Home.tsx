@@ -7,7 +7,12 @@ import { FEATURES } from '@/constants/enums';
 const featureIcons = [Target, Shield, Truck, RotateCcw];
 
 export function Home() {
-  const { data: featuredProducts, isLoading } = useFeaturedProducts();
+  const {
+    data: featuredProducts,
+    isLoading,
+    isError,
+    error,
+  } = useFeaturedProducts();
 
   return (
     <div>
@@ -110,9 +115,27 @@ export function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts?.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+            {featuredProducts && featuredProducts.length > 0 ? (
+              featuredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <p className="text-dark-text-secondary">
+                  {isError
+                    ? `Failed to load products: ${error?.message || 'Unknown error'}`
+                    : 'No featured products available yet.'}
+                </p>
+                {isError && (
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="mt-4 px-4 py-2 rounded-lg bg-primary-600 text-white text-sm hover:bg-primary-700 transition-colors"
+                  >
+                    Retry
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 

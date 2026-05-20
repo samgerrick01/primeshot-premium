@@ -18,6 +18,7 @@ import {
   useDiameters,
   useCategories,
   useGrains,
+  useCalibers,
   useDeleteProduct,
   useUpdateProduct,
 } from '@/hooks/adminQueries';
@@ -58,6 +59,7 @@ export function AdminProducts() {
   const { data: diameters = [] } = useDiameters();
   const { data: categories = [] } = useCategories();
   const { data: grains = [] } = useGrains();
+  const { data: calibers = [] } = useCalibers();
   const { mutateAsync: deleteProduct, isPending: isDeleting } =
     useDeleteProduct();
   const { mutateAsync: updateProduct, isPending: isUpdating } =
@@ -67,8 +69,12 @@ export function AdminProducts() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
 
-  // Delete confirmation
+  // Delete confirmation - support single or multiple
   const [deleteConfirm, setDeleteConfirm] = useState<AdminProduct | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Set<number>>(
+    new Set(),
+  );
+  const [deleteMultipleConfirm, setDeleteMultipleConfirm] = useState(false);
 
   // Edit modal
   const [editProduct, setEditProduct] = useState<AdminProduct | null>(null);
@@ -138,6 +144,49 @@ export function AdminProducts() {
       setDeleteConfirm(null);
     }
   }, [deleteConfirm, deleteProduct, showToast, fetchProducts]);
+
+  const handleDeleteMultiple = useCallback(async () => {
+    if (selectedProducts.size === 0) return;
+    try {
+      // Delete all selected products
+      const deletePromises = Array.from(selectedProducts).map((id) =>
+        deleteProduct(id),
+      );
+      await Promise.all(deletePromises);
+
+      showToast(
+        `${selectedProducts.size} product${selectedProducts.size > 1 ? 's' : ''} deleted successfully!`,
+        'success',
+      );
+      setSelectedProducts(new Set());
+      setDeleteMultipleConfirm(false);
+      fetchProducts();
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to delete products';
+      showToast(msg, 'error');
+      setDeleteMultipleConfirm(false);
+    }
+  }, [selectedProducts, deleteProduct, showToast, fetchProducts]);
+
+  const toggleSelectProduct = (id: number) => {
+    setSelectedProducts((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedProducts.size === filteredProducts.length) {
+      setSelectedProducts(new Set());
+    } else {
+      setSelectedProducts(new Set(filteredProducts.map((p) => p.id)));
+    }
+  };
 
   const openEditModal = (product: AdminProduct) => {
     setEditProduct(product);
@@ -233,13 +282,24 @@ export function AdminProducts() {
             View, edit, or remove products from the store
           </p>
         </div>
-        <button
-          onClick={() => navigate('/admin/products/add')}
-          className="px-4 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium transition-colors text-sm flex items-center gap-2 shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          Add New Product
-        </button>
+        <div className="flex items-center gap-2">
+          {selectedProducts.size > 0 && (
+            <button
+              onClick={() => setDeleteMultipleConfirm(true)}
+              className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors text-sm flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete ({selectedProducts.size})
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/admin/products/add')}
+            className="px-4 py-2.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white font-medium transition-colors text-sm flex items-center gap-2 shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            Add New Product
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -289,6 +349,17 @@ export function AdminProducts() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-dark-border bg-dark-surface/50">
+                  <th className="text-center py-3 px-4 text-dark-text-muted font-medium text-xs uppercase tracking-wider w-12">
+                    <input
+                      type="checkbox"
+                      checked={
+                        selectedProducts.size === filteredProducts.length &&
+                        filteredProducts.length > 0
+                      }
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 rounded border-dark-border bg-dark-surface text-primary-600 focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 cursor-pointer"
+                    />
+                  </th>
                   <th className="text-left py-3 px-4 text-dark-text-muted font-medium text-xs uppercase tracking-wider">
                     ID
                   </th>
@@ -316,8 +387,18 @@ export function AdminProducts() {
                 {filteredProducts.map((product) => (
                   <tr
                     key={product.id}
-                    className="border-b border-dark-border/50 hover:bg-dark-surface-tertiary/30 transition-colors"
+                    className={`border-b border-dark-border/50 hover:bg-dark-surface-tertiary/30 transition-colors ${
+                      selectedProducts.has(product.id) ? 'bg-primary-500/5' : ''
+                    }`}
                   >
+                    <td className="py-3 px-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.has(product.id)}
+                        onChange={() => toggleSelectProduct(product.id)}
+                        className="w-4 h-4 rounded border-dark-border bg-dark-surface text-primary-600 focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 cursor-pointer"
+                      />
+                    </td>
                     <td className="py-3 px-4 text-dark-text-muted">
                       {product.id}
                     </td>
@@ -397,7 +478,52 @@ export function AdminProducts() {
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Multiple Confirmation Modal */}
+      {deleteMultipleConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-surface-secondary rounded-2xl border border-dark-border shadow-2xl w-full max-w-sm p-6">
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+              </div>
+              <h3 className="text-lg font-bold text-dark-text-primary">
+                Delete Multiple Products
+              </h3>
+              <p className="text-sm text-dark-text-secondary mt-2">
+                Are you sure you want to delete{' '}
+                <span className="text-dark-text-primary font-medium">
+                  {selectedProducts.size} product
+                  {selectedProducts.size > 1 ? 's' : ''}
+                </span>
+                ? This action cannot be undone.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteMultipleConfirm(false)}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-dark-border text-dark-text-secondary hover:text-dark-text-primary hover:bg-dark-surface-tertiary transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteMultiple}
+                disabled={isDeleting}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isDeleting ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  'Delete All'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Single Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-dark-surface-secondary rounded-2xl border border-dark-border shadow-2xl w-full max-w-sm p-6">
@@ -532,14 +658,22 @@ export function AdminProducts() {
                   <label className="block text-sm font-medium text-dark-text-primary mb-1.5">
                     Caliber
                   </label>
-                  <input
-                    type="text"
-                    name="caliber"
-                    value={editForm.caliber}
-                    onChange={handleEditChange}
-                    placeholder="e.g., 4.5mm"
-                    className="w-full px-4 py-2.5 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-                  />
+                  <div className="relative">
+                    <select
+                      name="caliber"
+                      value={editForm.caliber}
+                      onChange={handleEditChange}
+                      className="w-full px-4 py-2.5 pr-8 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm appearance-none cursor-pointer"
+                    >
+                      <option value="">Select...</option>
+                      {calibers.map((c) => (
+                        <option key={c.id} value={c.value}>
+                          {c.value}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-text-muted pointer-events-none" />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-dark-text-primary mb-1.5">

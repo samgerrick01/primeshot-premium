@@ -8,6 +8,12 @@ import { Auth } from '@/pages/Auth';
 import { Account } from '@/pages/Account';
 import { Cart } from '@/pages/Cart';
 import { ProductDetail } from '@/pages/ProductDetail';
+import { NotFound } from '@/pages/NotFound';
+import { FAQ } from '@/pages/FAQ';
+import { ShippingReturns } from '@/pages/ShippingReturns';
+import { CaliberGuide } from '@/pages/CaliberGuide';
+import { PrivacyPolicy } from '@/pages/PrivacyPolicy';
+import { Contact } from '@/pages/Contact';
 import { AdminSignIn } from '@/pages/admin/AdminSignIn';
 import { AdminLayout } from '@/pages/admin/AdminLayout';
 import { AdminDashboard } from '@/pages/admin/AdminDashboard';
@@ -18,6 +24,7 @@ import { AdminProducts } from '@/pages/admin/AdminProducts';
 import { AdminDiameters } from '@/pages/admin/AdminDiameters';
 import { AdminCategories } from '@/pages/admin/AdminCategories';
 import { AdminGrains } from '@/pages/admin/AdminGrains';
+import { AdminCalibers } from '@/pages/admin/AdminCalibers';
 
 export const router = createBrowserRouter([
   {
@@ -32,6 +39,12 @@ export const router = createBrowserRouter([
       { path: 'account', element: <Account /> },
       { path: 'cart', element: <Cart /> },
       { path: 'product/:id', element: <ProductDetail /> },
+      { path: 'faq', element: <FAQ /> },
+      { path: 'shipping-returns', element: <ShippingReturns /> },
+      { path: 'caliber-guide', element: <CaliberGuide /> },
+      { path: 'privacy-policy', element: <PrivacyPolicy /> },
+      { path: 'contact', element: <Contact /> },
+      { path: '*', element: <NotFound /> },
     ],
   },
   {
@@ -50,6 +63,8 @@ export const router = createBrowserRouter([
       { path: 'categories', element: <AdminCategories /> },
       { path: 'grains', element: <AdminGrains /> },
       { path: 'diameters', element: <AdminDiameters /> },
+      { path: 'calibers', element: <AdminCalibers /> },
+      { path: '*', element: <NotFound /> },
     ],
   },
 ]);

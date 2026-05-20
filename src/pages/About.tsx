@@ -15,30 +15,63 @@ export function About() {
             Our Story
           </h1>
           <p className="text-lg text-primary-100 max-w-2xl mx-auto">
-            PrimeShot Premium Pellet/Slugs was born from a passion for airgun
-            sports and a commitment to providing the highest quality ammunition
-            for shooters at every level.
+            From humble beginnings to premium quality - discover how PrimeShot
+            became your trusted source for precision pellets and slugs.
           </p>
         </div>
       </section>
 
-      {/* Mission */}
+      {/* The Journey */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           <div>
-            <h2 className="font-serif text-3xl md:text-4xl font-bold text-text-primary dark:text-dark-text-primary">
-              Our Mission
+            <h2 className="font-serif text-3xl md:text-4xl font-bold text-text-primary dark:text-dark-text-primary mb-6">
+              The Journey Begins
             </h2>
-            <p className="mt-4 text-text-secondary dark:text-dark-text-secondary leading-relaxed">
-              We believe that great accuracy starts with great ammunition.
-              That's why we carefully manufacture every pellet and slug in our
-              collection, ensuring that each round meets our rigorous standards
-              for precision, consistency, and performance.
-            </p>
-            <p className="mt-4 text-text-secondary dark:text-dark-text-secondary leading-relaxed">
-              Whether you're a competitive shooter or a weekend enthusiast,
-              we're here to help you hit your mark with confidence.
-            </p>
+            <div className="space-y-4 text-text-secondary dark:text-dark-text-secondary leading-relaxed">
+              <p>
+                <strong className="text-primary-600 dark:text-primary-400">
+                  2025
+                </strong>{' '}
+                - PrimeShot was born from a passion for airgun sports. I started
+                with a <strong>local press slug</strong>, learning the craft of
+                creating precision ammunition one pellet at a time. Every shot
+                taught me something new about consistency, quality, and what
+                shooters truly need.
+              </p>
+              <p>
+                As demand grew and my skills sharpened, I knew it was time to
+                level up. I invested in
+                <strong className="text-primary-600 dark:text-primary-400">
+                  {' '}
+                  imported press slug equipment from Thor
+                </strong>
+                , a brand renowned for its precision engineering. This upgrade
+                transformed my production capabilities, allowing me to create
+                slugs with even tighter tolerances and superior performance.
+              </p>
+              <p>
+                But I didn't stop there. To offer a complete range of premium
+                ammunition, I also acquired a
+                <strong className="text-primary-600 dark:text-primary-400">
+                  {' '}
+                  Thor pellet mold
+                </strong>
+                . With Thor's industry-leading tools, I could now produce both
+                pellets and slugs that meet the highest standards of accuracy
+                and consistency.
+              </p>
+              <p>
+                <strong className="text-text-primary dark:text-dark-text-primary">
+                  Today
+                </strong>
+                , every pellet and slug that bears the PrimeShot name is crafted
+                with Thor equipment and years of dedication. Whether you're
+                competing at the highest level or enjoying weekend plinking, you
+                can trust that our ammunition delivers exceptional quality shot
+                after shot.
+              </p>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {ABOUT_STATS.map((stat, index) => {

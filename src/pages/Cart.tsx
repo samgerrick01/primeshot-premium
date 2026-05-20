@@ -6,6 +6,8 @@ import {
   Plus,
   ArrowRight,
   Target,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { formatPrice } from '@/utils/format';
@@ -18,7 +20,18 @@ export function Cart() {
     clearCart,
     getTotal,
     getItemCount,
+    selectedItems,
+    toggleItemSelection,
+    selectAllItems,
+    deselectAllItems,
+    removeSelectedItems,
+    getSelectedTotal,
+    getSelectedItemCount,
   } = useCartStore();
+
+  const allSelected =
+    items.length > 0 && items.every((item) => selectedItems.has(item.id));
+  const someSelected = selectedItems.size > 0;
 
   if (items.length === 0) {
     return (
@@ -47,22 +60,65 @@ export function Cart() {
           <h1 className="section-title">Shopping Cart</h1>
           <p className="section-subtitle mt-1">
             {getItemCount()} item{getItemCount() !== 1 ? 's' : ''} in your cart
+            {someSelected && (
+              <span className="ml-2 text-primary-600 dark:text-primary-400">
+                ({selectedItems.size} selected)
+              </span>
+            )}
           </p>
         </div>
-        <button
-          onClick={clearCart}
-          className="btn-ghost text-sm text-red-500 hover:text-red-600 flex items-center gap-1"
-        >
-          <Trash2 className="w-4 h-4" />
-          Clear Cart
-        </button>
+        <div className="flex items-center gap-2">
+          {someSelected && (
+            <button
+              onClick={removeSelectedItems}
+              className="btn-ghost text-sm text-red-500 hover:text-red-600 flex items-center gap-1"
+            >
+              <Trash2 className="w-4 h-4" />
+              Remove Selected
+            </button>
+          )}
+          <button
+            onClick={clearCart}
+            className="btn-ghost text-sm text-red-500 hover:text-red-600 flex items-center gap-1"
+          >
+            <Trash2 className="w-4 h-4" />
+            Clear Cart
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Cart Items */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Select All */}
+          <div className="flex items-center gap-3 px-4 py-2 bg-surface-secondary dark:bg-dark-surface-secondary rounded-lg">
+            <button
+              onClick={allSelected ? deselectAllItems : selectAllItems}
+              className="flex items-center gap-2 text-sm font-medium text-text-primary dark:text-dark-text-primary hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+            >
+              {allSelected ? (
+                <CheckSquare className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+              ) : (
+                <Square className="w-5 h-5" />
+              )}
+              Select All
+            </button>
+          </div>
+
           {items.map((item) => (
             <div key={item.id} className="card p-4 flex gap-4">
+              {/* Checkbox */}
+              <button
+                onClick={() => toggleItemSelection(item.id)}
+                className="flex-shrink-0 mt-1"
+                aria-label="Select item"
+              >
+                {selectedItems.has(item.id) ? (
+                  <CheckSquare className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                ) : (
+                  <Square className="w-5 h-5 text-text-muted dark:text-dark-text-muted" />
+                )}
+              </button>
               {/* Product Image */}
               <Link
                 to={`/product/${item.product_id}`}
@@ -154,10 +210,29 @@ export function Cart() {
               Order Summary
             </h2>
 
+            {someSelected && (
+              <div className="mb-4 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800">
+                <p className="text-sm font-medium text-primary-900 dark:text-primary-100 mb-1">
+                  Selected Items
+                </p>
+                <p className="text-xs text-primary-700 dark:text-primary-300">
+                  {getSelectedItemCount()} item
+                  {getSelectedItemCount() !== 1 ? 's' : ''} •{' '}
+                  {formatPrice(getSelectedTotal())}
+                </p>
+              </div>
+            )}
+
             <div className="space-y-3 text-sm">
               <div className="flex justify-between text-text-secondary dark:text-dark-text-secondary">
-                <span>Subtotal ({getItemCount()} items)</span>
-                <span>{formatPrice(getTotal())}</span>
+                <span>
+                  Subtotal (
+                  {someSelected ? getSelectedItemCount() : getItemCount()}{' '}
+                  items)
+                </span>
+                <span>
+                  {formatPrice(someSelected ? getSelectedTotal() : getTotal())}
+                </span>
               </div>
               <div className="flex justify-between text-text-secondary dark:text-dark-text-secondary">
                 <span>Shipping</span>
@@ -172,14 +247,25 @@ export function Cart() {
               <hr className="border-border dark:border-dark-border" />
               <div className="flex justify-between font-bold text-text-primary dark:text-dark-text-primary text-base">
                 <span>Total</span>
-                <span>{formatPrice(getTotal())}</span>
+                <span>
+                  {formatPrice(someSelected ? getSelectedTotal() : getTotal())}
+                </span>
               </div>
             </div>
 
-            <button className="btn-primary w-full mt-6 flex items-center justify-center gap-2">
-              Proceed to Checkout
+            <button
+              className="btn-primary w-full mt-6 flex items-center justify-center gap-2"
+              disabled={someSelected && selectedItems.size === 0}
+            >
+              Proceed to Checkout {someSelected && `(${selectedItems.size})`}
               <ArrowRight className="w-4 h-4" />
             </button>
+
+            {someSelected && selectedItems.size === 0 && (
+              <p className="text-xs text-center text-text-muted dark:text-dark-text-muted mt-2">
+                Select items to checkout
+              </p>
+            )}
 
             <Link
               to="/shop"

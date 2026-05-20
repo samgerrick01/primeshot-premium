@@ -14,7 +14,12 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/Toast';
-import { useDiameters, useCategories, useGrains } from '@/hooks/adminQueries';
+import {
+  useDiameters,
+  useCategories,
+  useGrains,
+  useCalibers,
+} from '@/hooks/adminQueries';
 
 interface PendingFile {
   file: File;
@@ -43,11 +48,15 @@ export function AdminAddProduct() {
   const { data: diameters = [] } = useDiameters();
   const { data: categories = [] } = useCategories();
   const { data: grains = [] } = useGrains();
+  const { data: calibers = [] } = useCalibers();
 
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+
+  // Ref for auto-hide success timeout
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const [form, setForm] = useState({
     product_name: '',
@@ -170,73 +179,68 @@ export function AdminAddProduct() {
 
   // Upload a single file to Supabase
   const uploadFile = async (file: File): Promise<UploadedFile | null> => {
-    const isVideo = file.type.startsWith('video/');
-
-    // Generate unique file name
-    const ext = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
-    const filePath = `products/${fileName}`;
-
-    console.log('[AdminAddProduct] Uploading to bucket "primeshot":', filePath);
-    console.log(
-      '[AdminAddProduct] File size:',
-      (file.size / 1024).toFixed(1),
-      'KB',
-    );
-
-    // First, try to create the bucket if it doesn't exist (silently ignore if already exists)
     try {
-      await supabase.storage.createBucket('primeshot', {
-        public: true,
-      });
-      console.log('[AdminAddProduct] Created or verified bucket "primeshot"');
-    } catch {
-      // Bucket likely already exists
+      const isVideo = file.type.startsWith('video/');
+
+      // Generate unique file name
+      const ext = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${ext}`;
+      const filePath = `products/${fileName}`;
+
       console.log(
-        '[AdminAddProduct] Bucket already exists or cannot be created',
+        '[AdminAddProduct] Uploading to bucket "primeshot":',
+        filePath,
       );
-    }
+      console.log(
+        '[AdminAddProduct] File size:',
+        (file.size / 1024).toFixed(1),
+        'KB',
+      );
 
-    // Upload file
-    const { error: uploadError } = await supabase.storage
-      .from('primeshot')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
+      // Upload file directly (bucket should exist - if not, error will be caught)
+      const { error: uploadError } = await supabase.storage
+        .from('primeshot')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
 
-    if (uploadError) {
-      console.error('[AdminAddProduct] Upload error details:', uploadError);
+      if (uploadError) {
+        console.error('[AdminAddProduct] Upload error details:', uploadError);
+        return null;
+      }
+
+      console.log('[AdminAddProduct] Upload successful!');
+
+      // Get public URL (works for public buckets)
+      const { data: urlData } = supabase.storage
+        .from('primeshot')
+        .getPublicUrl(filePath);
+
+      // Also get a signed URL as fallback
+      const { data: signedData } = await supabase.storage
+        .from('primeshot')
+        .createSignedUrl(filePath, 31536000); // 1 year expiry
+
+      const publicUrl = urlData.publicUrl;
+      const signedUrl = signedData?.signedUrl;
+
+      console.log('[AdminAddProduct] Public URL:', publicUrl);
+      console.log('[AdminAddProduct] Signed URL:', signedUrl);
+
+      // Use signed URL as fallback if public URL doesn't work
+      const finalUrl = signedUrl || publicUrl;
+
+      return {
+        url: finalUrl,
+        path: filePath,
+        type: isVideo ? 'video' : 'image',
+        thumbnail: false,
+      };
+    } catch (err) {
+      console.error('[AdminAddProduct] Upload unexpected error:', err);
       return null;
     }
-
-    console.log('[AdminAddProduct] Upload successful!');
-
-    // Get public URL (works for public buckets)
-    const { data: urlData } = supabase.storage
-      .from('primeshot')
-      .getPublicUrl(filePath);
-
-    // Also get a signed URL as fallback
-    const { data: signedData } = await supabase.storage
-      .from('primeshot')
-      .createSignedUrl(filePath, 31536000); // 1 year expiry
-
-    const publicUrl = urlData.publicUrl;
-    const signedUrl = signedData?.signedUrl;
-
-    console.log('[AdminAddProduct] Public URL:', publicUrl);
-    console.log('[AdminAddProduct] Signed URL:', signedUrl);
-
-    // Use signed URL as fallback if public URL doesn't work
-    const finalUrl = signedUrl || publicUrl;
-
-    return {
-      url: finalUrl,
-      path: filePath,
-      type: isVideo ? 'video' : 'image',
-      thumbnail: false,
-    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -268,101 +272,112 @@ export function AdminAddProduct() {
 
     setSubmitting(true);
 
-    // === UPLOAD FILES NOW (on CTA click) ===
-    const uploadedFiles: UploadedFile[] = [];
-    for (const pf of pendingFiles) {
-      const result = await uploadFile(pf.file);
-      if (result) {
-        result.thumbnail = pf.thumbnail;
-        uploadedFiles.push(result);
-      } else {
-        const errMsg = `Failed to upload file: ${pf.file.name}. 
+    try {
+      // === UPLOAD FILES NOW (on CTA click) ===
+      const uploadedFiles: UploadedFile[] = [];
+      for (const pf of pendingFiles) {
+        const result = await uploadFile(pf.file);
+        if (result) {
+          result.thumbnail = pf.thumbnail;
+          uploadedFiles.push(result);
+        } else {
+          const errMsg = `Failed to upload file: ${pf.file.name}. 
 
 🔍 POSSIBLE FIX:
 1️⃣ Go to Supabase Dashboard → Storage → Create bucket named "primeshot" (make it Public)
 2️⃣ Or run the SQL from "supabase-add-media-columns.sql" in Supabase SQL Editor
 
 Check browser console (F12) for error details.`;
-        setError(errMsg);
+          setError(errMsg);
+          setSubmitting(false);
+          return;
+        }
+      }
+
+      // Build media arrays
+      const imageUrls = uploadedFiles
+        .filter((f) => f.type === 'image')
+        .map((f) => f.url);
+      const videoUrls = uploadedFiles
+        .filter((f) => f.type === 'video')
+        .map((f) => f.url);
+      const thumbnailUrl =
+        uploadedFiles.find((f) => f.thumbnail)?.url || imageUrls[0] || '';
+
+      console.log('[AdminAddProduct] Image URLs to insert:', imageUrls);
+
+      // Prepare insert data
+      const insertData: Record<string, unknown> = {
+        product_name: form.product_name,
+        description: form.description,
+        price: parseFloat(form.price),
+        stocks: parseInt(form.stocks) || 0,
+        caliber: form.caliber,
+        grains: form.grains || '0',
+        diameter: form.diameter,
+        category: form.category,
+        images: imageUrls,
+        featured: form.featured,
+      };
+
+      // Try to add videos/thumbnail if columns exist
+      try {
+        const { data: colCheck } = await supabase
+          .from('products')
+          .select('videos')
+          .limit(1);
+        if (colCheck !== null) {
+          insertData.videos = videoUrls;
+          insertData.thumbnail = thumbnailUrl;
+        }
+      } catch {
+        // columns don't exist - skip
+      }
+
+      // Insert product
+      const { error: insertError } = await supabase
+        .from('products')
+        .insert(insertData);
+
+      if (insertError) {
+        console.error('[AdminAddProduct] Insert error:', insertError);
+        setError(insertError.message);
+        showToast(insertError.message, 'error');
         setSubmitting(false);
         return;
       }
-    }
 
-    // Build media arrays
-    const imageUrls = uploadedFiles
-      .filter((f) => f.type === 'image')
-      .map((f) => f.url);
-    const videoUrls = uploadedFiles
-      .filter((f) => f.type === 'video')
-      .map((f) => f.url);
-    const thumbnailUrl =
-      uploadedFiles.find((f) => f.thumbnail)?.url || imageUrls[0] || '';
-
-    console.log('[AdminAddProduct] Image URLs to insert:', imageUrls);
-
-    // Prepare insert data
-    const insertData: Record<string, unknown> = {
-      product_name: form.product_name,
-      description: form.description,
-      price: parseFloat(form.price),
-      stocks: parseInt(form.stocks) || 0,
-      caliber: form.caliber,
-      grains: form.grains || '0',
-      diameter: form.diameter,
-      category: form.category,
-      images: imageUrls,
-      featured: form.featured,
-    };
-
-    // Try to add videos/thumbnail if columns exist
-    try {
-      const { data: colCheck } = await supabase
-        .from('products')
-        .select('videos')
-        .limit(1);
-      if (colCheck !== null) {
-        insertData.videos = videoUrls;
-        insertData.thumbnail = thumbnailUrl;
+      setSuccess(true);
+      showToast('Product added successfully!', 'success');
+      // Reset form
+      setForm({
+        product_name: '',
+        description: '',
+        price: '',
+        stocks: '',
+        caliber: '',
+        grains: '',
+        diameter: '',
+        category: '',
+        featured: false,
+      });
+      // Clear pending files
+      for (const pf of pendingFiles) {
+        URL.revokeObjectURL(pf.previewUrl);
       }
-    } catch {
-      // columns don't exist - skip
-    }
-
-    // Insert product
-    const { error: insertError } = await supabase
-      .from('products')
-      .insert(insertData);
-
-    if (insertError) {
-      console.error('[AdminAddProduct] Insert error:', insertError);
-      setError(insertError.message);
-      showToast(insertError.message, 'error');
+      setPendingFiles([]);
+      successTimeoutRef.current = setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      // Catch ANY unexpected error to prevent infinite loading state
+      console.error('[AdminAddProduct] Unexpected error during submit:', err);
+      const message =
+        err instanceof Error ? err.message : 'An unexpected error occurred';
+      setError(message);
+      showToast(message, 'error');
+    } finally {
       setSubmitting(false);
-      return;
+      clearTimeout(successTimeoutRef.current);
     }
-
-    setSuccess(true);
-    showToast('Product added successfully!', 'success');
-    // Reset form
-    setForm({
-      product_name: '',
-      description: '',
-      price: '',
-      stocks: '',
-      caliber: '',
-      grains: '',
-      diameter: '',
-      category: '',
-      featured: false,
-    });
-    // Clear pending files
-    for (const pf of pendingFiles) {
-      URL.revokeObjectURL(pf.previewUrl);
-    }
-    setPendingFiles([]);
-    setSubmitting(false);
-    setTimeout(() => setSuccess(false), 3000);
   };
 
   const imageFiles = pendingFiles.filter((f) => f.type === 'image');
@@ -487,14 +502,22 @@ Check browser console (F12) for error details.`;
             <label className="block text-sm font-medium text-dark-text-primary mb-1.5">
               Caliber
             </label>
-            <input
-              type="text"
-              name="caliber"
-              value={form.caliber}
-              onChange={handleChange}
-              placeholder="e.g., 4.5mm"
-              className="w-full px-4 py-2.5 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary placeholder:text-dark-text-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-            />
+            <div className="relative">
+              <select
+                name="caliber"
+                value={form.caliber}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 pr-8 rounded-lg border border-dark-border bg-dark-surface text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm appearance-none cursor-pointer"
+              >
+                <option value="">Select caliber...</option>
+                {calibers.map((c) => (
+                  <option key={c.id} value={c.value}>
+                    {c.value}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-dark-text-muted pointer-events-none" />
+            </div>
           </div>
           {/* Grains - dropdown loaded from DB */}
           <div>

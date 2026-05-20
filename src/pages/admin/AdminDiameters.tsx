@@ -19,6 +19,10 @@ export function AdminDiameters() {
     id: number;
     value: string;
   } | null>(null);
+  const [selectedDiameters, setSelectedDiameters] = useState<Set<number>>(
+    new Set(),
+  );
+  const [deleteMultipleConfirm, setDeleteMultipleConfirm] = useState(false);
 
   const adding = isAdding;
   const deleting = isDeleting;
@@ -73,17 +77,69 @@ export function AdminDiameters() {
     }
   }, [deleteConfirm, deleteDiameter, showToast]);
 
+  const handleDeleteMultiple = useCallback(async () => {
+    if (selectedDiameters.size === 0) return;
+    try {
+      const deletePromises = Array.from(selectedDiameters).map((id) =>
+        deleteDiameter(id),
+      );
+      await Promise.all(deletePromises);
+
+      showToast(
+        `${selectedDiameters.size} diameter${selectedDiameters.size > 1 ? 's' : ''} deleted successfully!`,
+        'success',
+      );
+      setSelectedDiameters(new Set());
+      setDeleteMultipleConfirm(false);
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to delete diameters';
+      showToast(msg, 'error');
+      setDeleteMultipleConfirm(false);
+    }
+  }, [selectedDiameters, deleteDiameter, showToast]);
+
+  const toggleSelectDiameter = (id: number) => {
+    setSelectedDiameters((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedDiameters.size === (diameters ?? []).length) {
+      setSelectedDiameters(new Set());
+    } else {
+      setSelectedDiameters(new Set((diameters ?? []).map((d) => d.id)));
+    }
+  };
+
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-dark-text-primary flex items-center gap-3">
-          <Ruler className="w-6 h-6 text-primary-400" />
-          Manage Diameters
-        </h1>
-        <p className="text-dark-text-secondary mt-1">
-          Add or remove diameter options for product listings
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-dark-text-primary flex items-center gap-3">
+            <Ruler className="w-6 h-6 text-primary-400" />
+            Manage Diameters
+          </h1>
+          <p className="text-dark-text-secondary mt-1">
+            Add or remove diameter options for product listings
+          </p>
+        </div>
+        {selectedDiameters.size > 0 && (
+          <button
+            onClick={() => setDeleteMultipleConfirm(true)}
+            className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors text-sm flex items-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            Delete ({selectedDiameters.size})
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -157,6 +213,18 @@ export function AdminDiameters() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-dark-border bg-dark-surface/50">
+                      <th className="text-center py-3 px-4 text-dark-text-muted font-medium text-xs uppercase tracking-wider w-12">
+                        <input
+                          type="checkbox"
+                          checked={
+                            selectedDiameters.size ===
+                              (diameters ?? []).length &&
+                            (diameters ?? []).length > 0
+                          }
+                          onChange={toggleSelectAll}
+                          className="w-4 h-4 rounded border-dark-border bg-dark-surface text-primary-600 focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 cursor-pointer"
+                        />
+                      </th>
                       <th className="text-left py-3 px-4 text-dark-text-muted font-medium text-xs uppercase tracking-wider">
                         ID
                       </th>
@@ -175,8 +243,18 @@ export function AdminDiameters() {
                     {(diameters ?? []).map((d) => (
                       <tr
                         key={d.id}
-                        className="border-b border-dark-border/50 hover:bg-dark-surface-tertiary/30 transition-colors"
+                        className={`border-b border-dark-border/50 hover:bg-dark-surface-tertiary/30 transition-colors ${
+                          selectedDiameters.has(d.id) ? 'bg-primary-500/5' : ''
+                        }`}
                       >
+                        <td className="py-3 px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedDiameters.has(d.id)}
+                            onChange={() => toggleSelectDiameter(d.id)}
+                            className="w-4 h-4 rounded border-dark-border bg-dark-surface text-primary-600 focus:ring-2 focus:ring-primary-500 focus:ring-offset-0 cursor-pointer"
+                          />
+                        </td>
                         <td className="py-3 px-4 text-dark-text-muted">
                           {d.id}
                         </td>
@@ -211,7 +289,52 @@ export function AdminDiameters() {
         </div>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Multiple Confirmation Modal */}
+      {deleteMultipleConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-dark-surface-secondary rounded-2xl border border-dark-border shadow-2xl w-full max-w-sm p-6">
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
+              </div>
+              <h3 className="text-lg font-bold text-dark-text-primary">
+                Delete Multiple Diameters
+              </h3>
+              <p className="text-sm text-dark-text-secondary mt-2">
+                Are you sure you want to delete{' '}
+                <span className="text-dark-text-primary font-medium">
+                  {selectedDiameters.size} diameter
+                  {selectedDiameters.size > 1 ? 's' : ''}
+                </span>
+                ? This may affect products using these diameters.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteMultipleConfirm(false)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-dark-border text-dark-text-secondary hover:text-dark-text-primary hover:bg-dark-surface-tertiary transition-colors text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteMultiple}
+                disabled={deleting}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  'Delete All'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Single Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-dark-surface-secondary rounded-2xl border border-dark-border shadow-2xl w-full max-w-sm p-6">

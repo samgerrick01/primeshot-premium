@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
 import { ProductCard } from '@/components/ui/ProductCard';
@@ -6,9 +7,19 @@ import { PRODUCT_CATEGORIES } from '@/constants/enums';
 
 export function Shop() {
   const { data: products, isLoading } = useProducts();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Handle category from URL params (from Categories page)
+  useEffect(() => {
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      setSelectedCategory(categoryParam);
+      setShowFilters(true);
+    }
+  }, [searchParams]);
 
   const filteredProducts = products?.filter((product) => {
     const matchesSearch =

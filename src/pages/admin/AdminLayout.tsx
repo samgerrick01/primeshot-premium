@@ -9,6 +9,7 @@ import {
   Ruler,
   Tags,
   Weight,
+  Target,
   Plus,
   LogOut,
   Home,
@@ -61,6 +62,11 @@ const sidebarLinks = [
     label: 'Diameters',
     path: '/admin/diameters',
     icon: Ruler,
+  },
+  {
+    label: 'Calibers',
+    path: '/admin/calibers',
+    icon: Target,
   },
 ];
 

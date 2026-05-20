@@ -23,6 +23,12 @@ export interface Category {
   created_at: string;
 }
 
+export interface Caliber {
+  id: number;
+  value: string;
+  created_at: string;
+}
+
 export interface Order {
   id: number;
   user_id: string;
@@ -70,6 +76,7 @@ export const QUERY_KEYS = {
   diameters: ['diameters'] as const,
   grains: ['grains'] as const,
   categories: ['categories'] as const,
+  calibers: ['calibers'] as const,
   orders: ['orders'] as const,
   orderItems: (orderId: number) => ['orderItems', orderId] as const,
   profiles: ['profiles'] as const,
@@ -213,8 +220,10 @@ export function useDiameters() {
   return useQuery({
     queryKey: QUERY_KEYS.diameters,
     queryFn: fetchDiameters,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    staleTime: 5_000,
+    gcTime: 10_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 }
 
@@ -226,8 +235,9 @@ export function useAddDiameter() {
       const { error } = await supabase.from('diameters').insert({ value });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.diameters });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.diameters });
+      await queryClient.refetchQueries({ queryKey: QUERY_KEYS.diameters });
     },
   });
 }
@@ -248,8 +258,9 @@ export function useDeleteDiameter() {
         throw error;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.diameters });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.diameters });
+      await queryClient.refetchQueries({ queryKey: QUERY_KEYS.diameters });
     },
   });
 }
@@ -342,6 +353,7 @@ export function useAddProduct() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
   });
 }
@@ -409,8 +421,10 @@ export function useGrains() {
   return useQuery({
     queryKey: QUERY_KEYS.grains,
     queryFn: fetchGrains,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    staleTime: 5_000,
+    gcTime: 10_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 }
 
@@ -422,8 +436,9 @@ export function useAddGrain() {
       const { error } = await supabase.from('grains').insert({ value });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.grains });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.grains });
+      await queryClient.refetchQueries({ queryKey: QUERY_KEYS.grains });
     },
   });
 }
@@ -444,8 +459,9 @@ export function useDeleteGrain() {
         throw error;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.grains });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.grains });
+      await queryClient.refetchQueries({ queryKey: QUERY_KEYS.grains });
     },
   });
 }
@@ -468,8 +484,10 @@ export function useCategories() {
   return useQuery({
     queryKey: QUERY_KEYS.categories,
     queryFn: fetchCategories,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    staleTime: 5_000,
+    gcTime: 10_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 }
 
@@ -481,8 +499,9 @@ export function useAddCategory() {
       const { error } = await supabase.from('categories').insert({ name });
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.categories });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.categories });
+      await queryClient.refetchQueries({ queryKey: QUERY_KEYS.categories });
     },
   });
 }
@@ -503,8 +522,72 @@ export function useDeleteCategory() {
         throw error;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.categories });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.categories });
+      await queryClient.refetchQueries({ queryKey: QUERY_KEYS.categories });
+    },
+  });
+}
+
+// ============================================================
+// Calibers
+// ============================================================
+
+async function fetchCalibers(): Promise<Caliber[]> {
+  const { data, error } = await supabase
+    .from('calibers')
+    .select('*')
+    .order('id', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+export function useCalibers() {
+  return useQuery({
+    queryKey: QUERY_KEYS.calibers,
+    queryFn: fetchCalibers,
+    staleTime: 5_000,
+    gcTime: 10_000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
+}
+
+export function useAddCaliber() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (value: string) => {
+      const { error } = await supabase.from('calibers').insert({ value });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.calibers });
+      await queryClient.refetchQueries({ queryKey: QUERY_KEYS.calibers });
+    },
+  });
+}
+
+export function useDeleteCaliber() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { error } = await supabase.from('calibers').delete().eq('id', id);
+      if (error) {
+        console.error('[adminQueries] deleteCaliber error:', error);
+        if (error.message?.includes('foreign key constraint')) {
+          throw new Error(
+            'Cannot delete: This caliber is still being used by one or more products.',
+          );
+        }
+        throw error;
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.calibers });
+      await queryClient.refetchQueries({ queryKey: QUERY_KEYS.calibers });
     },
   });
 }
