@@ -1,6 +1,13 @@
 // Setup type definitions for built-in Supabase Runtime APIs
-import "@supabase/functions-js/edge-runtime.d.ts";
 // Uses Deno.serve and fetch API (built-in Deno runtime)
+
+// ── CORS Headers ──────────────────────────────────────────────
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
 
 interface OrderItem {
 
@@ -32,6 +39,11 @@ interface BrevoRequestBody {
 }
 
 Deno.serve(async (req) => {
+  // ── Handle CORS Preflight ──────────────────────────────────────
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   try {
     // Parse the request body
     const payload: AdminNotificationPayload = await req.json();
@@ -39,7 +51,7 @@ Deno.serve(async (req) => {
     if (!payload.order_id) {
       return new Response(
         JSON.stringify({ error: "order_id is required" }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -47,7 +59,7 @@ Deno.serve(async (req) => {
     if (!brevoApiKey) {
       return new Response(
         JSON.stringify({ error: "BREVO_API_KEY not configured" }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -55,7 +67,7 @@ Deno.serve(async (req) => {
     if (!adminEmail) {
       return new Response(
         JSON.stringify({ error: "ADMIN_EMAIL not configured" }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -64,7 +76,7 @@ Deno.serve(async (req) => {
     if (!supabaseUrl) {
       return new Response(
         JSON.stringify({ error: "SUPABASE_URL not configured" }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -321,7 +333,7 @@ Deno.serve(async (req) => {
     const brevoBody: BrevoRequestBody = {
       sender: {
         name: "PrimeShot Premium",
-        email: "noreply@primeshotpremium.com",
+        email: "desilva.sam01.sgds@gmail.com",
       },
       to: [
         {
@@ -353,7 +365,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Failed to send admin notification email" }),
         {
           status: 500,
-          headers: { "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
     }
@@ -363,13 +375,13 @@ Deno.serve(async (req) => {
         success: true,
         message: "Admin notification email sent",
       }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("Unexpected error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });

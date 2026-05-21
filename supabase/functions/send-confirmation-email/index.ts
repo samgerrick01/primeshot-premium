@@ -215,7 +215,7 @@ Deno.serve(async (req) => {
     const brevoBody: BrevoRequestBody = {
       sender: {
         name: "PrimeShot Premium",
-        email: "noreply@primeshotpremium.com",
+        email: "desilva.sam01.sgds@gmail.com",
       },
       to: [
         {
