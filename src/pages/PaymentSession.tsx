@@ -287,14 +287,52 @@ export function PaymentSession() {
 
       if (itemsError) throw new Error(itemsError.message);
 
-      // 6. Remove ordered items from cart
+      // 6. Send admin notification email (fire-and-forget)
+      supabase.functions
+        .invoke('send-admin-notification', {
+          body: {
+            order_id: order.id,
+            customer_name:
+              `${user.firstname || ''} ${user.lastname || ''}`.trim() ||
+              'Customer',
+            customer_email: user.email,
+            total,
+            shipping_address: shippingAddress || 'N/A',
+            payment_receipt_url: receiptUrl,
+            items: checkoutItems.map((item) => ({
+              product_name: item.product.name,
+              quantity: item.quantity,
+              price: item.product.price,
+              grains: item.product.grains || null,
+              diameter: item.product.diameter || null,
+              caliber: item.product.caliber || null,
+            })),
+            created_at: new Date().toISOString(),
+          },
+        })
+        .then(({ error: fnErr }) => {
+          if (fnErr) {
+            console.warn(
+              '[PaymentSession] Admin notification not sent:',
+              fnErr,
+            );
+          } else {
+            console.log('[PaymentSession] Admin notified successfully');
+          }
+        })
+        .catch((err) => {
+          // Non-blocking – don't fail the order if email fails
+          console.warn('[PaymentSession] Failed to notify admin:', err);
+        });
+
+      // 7. Remove ordered items from cart
       checkoutItems.forEach((item) => {
         removeItem(item.product_id);
       });
 
       setSuccess(true);
 
-      // 7. Redirect to orders page after a brief moment
+      // 8. Redirect to orders page after a brief moment
       setTimeout(() => {
         navigate('/orders');
       }, 1500);
