@@ -51,6 +51,9 @@ export interface OrderItem {
   product_name: string;
   quantity: number;
   price: number;
+  grains?: string;
+  diameter?: string;
+  caliber?: string;
 }
 
 export interface Profile {

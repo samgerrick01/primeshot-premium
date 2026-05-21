@@ -25,6 +25,9 @@ interface OrderItem {
   product_name: string;
   quantity: number;
   price: number;
+  grains?: string;
+  diameter?: string;
+  caliber?: string;
 }
 
 interface Order {
@@ -333,12 +336,35 @@ export function Orders() {
                           {items.map((item) => (
                             <div
                               key={item.id}
-                              className="flex justify-between items-center text-sm"
+                              className="flex justify-between items-start text-sm"
                             >
-                              <span className="text-text-primary dark:text-dark-text-primary">
-                                {item.product_name} × {item.quantity}
-                              </span>
-                              <span className="text-text-primary dark:text-dark-text-primary font-medium">
+                              <div className="flex-1">
+                                <span className="text-text-primary dark:text-dark-text-primary font-medium">
+                                  {item.product_name} × {item.quantity}
+                                </span>
+                                {(item.grains ||
+                                  item.diameter ||
+                                  item.caliber) && (
+                                  <div className="flex flex-wrap gap-2 mt-1">
+                                    {item.caliber && (
+                                      <span className="inline-flex items-center gap-0.5 text-xs text-text-muted dark:text-dark-text-muted bg-surface-tertiary/50 dark:bg-dark-surface-tertiary/50 px-1.5 py-0.5 rounded">
+                                        Caliber: {item.caliber}
+                                      </span>
+                                    )}
+                                    {item.grains && (
+                                      <span className="inline-flex items-center gap-0.5 text-xs text-text-muted dark:text-dark-text-muted bg-surface-tertiary/50 dark:bg-dark-surface-tertiary/50 px-1.5 py-0.5 rounded">
+                                        {item.grains} gr
+                                      </span>
+                                    )}
+                                    {item.diameter && (
+                                      <span className="inline-flex items-center gap-0.5 text-xs text-text-muted dark:text-dark-text-muted bg-surface-tertiary/50 dark:bg-dark-surface-tertiary/50 px-1.5 py-0.5 rounded">
+                                        Dia: {item.diameter}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-text-primary dark:text-dark-text-primary font-medium ml-4 whitespace-nowrap">
                                 {formatPrice(Number(item.price))}
                               </span>
                             </div>

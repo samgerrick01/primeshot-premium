@@ -17,6 +17,7 @@ export interface Product {
   created_at: string;
   grains?: string;
   diameter?: string;
+  caliber?: string;
 }
 
 export interface CartItem {

@@ -270,12 +270,15 @@ export function PaymentSession() {
 
       if (orderError) throw new Error(orderError.message);
 
-      // 5. Insert order items
+      // 5. Insert order items with grains, diameter, caliber
       const orderItems = checkoutItems.map((item) => ({
         order_id: order.id,
         product_name: item.product.name,
         quantity: item.quantity,
         price: item.product.price,
+        grains: item.product.grains || null,
+        diameter: item.product.diameter || null,
+        caliber: item.product.caliber || null,
       }));
 
       const { error: itemsError } = await supabase

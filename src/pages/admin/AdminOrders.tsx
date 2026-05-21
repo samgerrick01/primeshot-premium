@@ -10,7 +10,6 @@ import {
   Truck,
   XCircle,
   Package,
-  ExternalLink,
   Save,
   Eye,
 } from 'lucide-react';
@@ -336,12 +335,35 @@ export function AdminOrders() {
                         {expandedItems.map((item) => (
                           <div
                             key={item.id}
-                            className="flex justify-between items-center text-sm"
+                            className="flex justify-between items-start text-sm"
                           >
-                            <span className="text-dark-text-primary">
-                              {item.product_name} × {item.quantity}
-                            </span>
-                            <span className="text-dark-text-primary font-medium">
+                            <div className="flex-1">
+                              <span className="text-dark-text-primary font-medium">
+                                {item.product_name} × {item.quantity}
+                              </span>
+                              {(item.grains ||
+                                item.diameter ||
+                                item.caliber) && (
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                  {item.caliber && (
+                                    <span className="inline-flex items-center gap-0.5 text-xs text-dark-text-muted bg-dark-surface-tertiary/50 px-1.5 py-0.5 rounded">
+                                      Caliber: {item.caliber}
+                                    </span>
+                                  )}
+                                  {item.grains && (
+                                    <span className="inline-flex items-center gap-0.5 text-xs text-dark-text-muted bg-dark-surface-tertiary/50 px-1.5 py-0.5 rounded">
+                                      {item.grains} gr
+                                    </span>
+                                  )}
+                                  {item.diameter && (
+                                    <span className="inline-flex items-center gap-0.5 text-xs text-dark-text-muted bg-dark-surface-tertiary/50 px-1.5 py-0.5 rounded">
+                                      Dia: {item.diameter}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-dark-text-primary font-medium ml-4 whitespace-nowrap">
                               {formatPrice(Number(item.price))}
                             </span>
                           </div>
@@ -377,16 +399,26 @@ export function AdminOrders() {
                         <p className="text-xs font-medium text-dark-text-muted uppercase tracking-wider mb-1">
                           Payment Receipt
                         </p>
-                        <a
-                          href={order.payment_receipt_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-sm text-primary-400 hover:text-primary-300 transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                          View Receipt
-                          <ExternalLink className="w-3 h-3" />
-                        </a>
+                        <div className="relative mt-1 rounded-lg overflow-hidden border border-dark-border bg-dark-surface max-w-md">
+                          <img
+                            src={order.payment_receipt_url}
+                            alt="Payment Receipt"
+                            className="w-full h-auto object-contain max-h-60"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display =
+                                'none';
+                              (
+                                e.target as HTMLImageElement
+                              ).nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                          <div className="hidden flex-col items-center justify-center py-6 text-dark-text-muted">
+                            <Eye className="w-8 h-8 mb-2" />
+                            <p className="text-sm">
+                              Receipt image not available
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     )}
 
