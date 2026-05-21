@@ -235,14 +235,14 @@ export function PaymentSession() {
       const fileExt = file.name.split('.').pop() || 'png';
       const fileName = `receipts/${user.id}/${Date.now()}.${fileExt}`;
       const { error: uploadError } = await supabase.storage
-        .from('receipts')
+        .from('primeshot')
         .upload(fileName, file);
 
       if (uploadError) throw new Error(uploadError.message);
 
       // 2. Get public URL for the receipt
       const { data: publicUrlData } = supabase.storage
-        .from('receipts')
+        .from('primeshot')
         .getPublicUrl(fileName);
       const receiptUrl = publicUrlData?.publicUrl || '';
 
@@ -291,9 +291,9 @@ export function PaymentSession() {
 
       setSuccess(true);
 
-      // 7. Redirect to account page after a brief moment
+      // 7. Redirect to orders page after a brief moment
       setTimeout(() => {
-        navigate('/account?tab=orders');
+        navigate('/orders');
       }, 1500);
     } catch (err: any) {
       console.error('[PaymentSession] Error:', err);
@@ -334,7 +334,7 @@ export function PaymentSession() {
             your payment receipt and update the status shortly.
           </p>
           <button
-            onClick={() => navigate('/account?tab=orders')}
+            onClick={() => navigate('/orders')}
             className="btn-primary inline-flex items-center gap-2"
           >
             <ShoppingCart className="w-4 h-4" />

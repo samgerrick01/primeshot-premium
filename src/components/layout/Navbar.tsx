@@ -1,8 +1,17 @@
 import { Link } from 'react-router-dom';
-import { Menu, X, User, LogOut, Shield } from 'lucide-react';
-import { useState } from 'react';
+import {
+  Menu,
+  X,
+  User,
+  LogOut,
+  Shield,
+  ShoppingBag,
+  Package,
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { CartIcon } from '@/components/ui/CartIcon';
+import { OrdersIcon } from '@/components/ui/OrdersIcon';
 import { useAuthStore } from '@/store/authStore';
 import { NAV_LINKS, USER_ROLE } from '@/constants/enums';
 
@@ -35,6 +44,7 @@ export function Navbar() {
           {/* Right side */}
           <div className="flex items-center gap-2">
             <ThemeToggle />
+            <OrdersIcon />
             <CartIcon />
 
             {user ? (
@@ -110,6 +120,14 @@ export function Navbar() {
                     Admin Dashboard
                   </Link>
                 )}
+                <Link
+                  to="/orders"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2 btn-ghost w-full text-left"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  My Orders
+                </Link>
                 <Link
                   to="/account"
                   onClick={() => setIsOpen(false)}

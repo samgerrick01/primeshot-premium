@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   User,
   Mail,
@@ -15,9 +15,19 @@ import {
   Pencil,
   X,
   Save,
+  ShoppingBag,
+  ChevronRight,
+  Clock,
+  CheckCircle,
+  Package,
+  Truck,
+  XCircle,
+  Loader2,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { PROFILE_FIELDS } from '@/constants/enums';
+import { supabase } from '@/lib/supabase';
+import { formatPrice } from '@/utils/format';
+import { PROFILE_FIELDS, ORDER_STATUS_LABELS } from '@/constants/enums';
 
 const iconMap: Record<string, React.ElementType> = {
   User,
@@ -73,6 +83,29 @@ const EDITABLE_FIELDS: EditableField[] = [
   { key: 'zipcode', label: 'Zip Code', icon: 'Hash', section: 'address' },
 ];
 
+interface RecentOrder {
+  id: number;
+  total: number;
+  status: string;
+  created_at: string;
+}
+
+const statusIconMap: Record<string, React.ElementType> = {
+  for_verification: Clock,
+  paid: CheckCircle,
+  preparing: Package,
+  to_ship: Package,
+  in_transit: Truck,
+  delivered: CheckCircle,
+  cancelled: XCircle,
+};
+
+function getStatusLabel(status: string) {
+  return (
+    ORDER_STATUS_LABELS[status as keyof typeof ORDER_STATUS_LABELS] || status
+  );
+}
+
 export function Account() {
   const { user, loading, updateProfile } = useAuthStore();
   const navigate = useNavigate();
@@ -81,12 +114,44 @@ export function Account() {
   const [editForm, setEditForm] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchRecentOrders();
+    }
+  }, [user]);
+
+  const fetchRecentOrders = async () => {
+    if (!user) return;
+    setOrdersLoading(true);
+    setOrdersError(null);
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('orders')
+        .select('id, total, status, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (fetchError) throw fetchError;
+      setRecentOrders(data || []);
+    } catch (err: any) {
+      console.error('[Account] Error fetching recent orders:', err);
+      setOrdersError(err?.message || 'Failed to load orders');
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
 
   const startEditing = () => {
     if (!user) return;
@@ -410,18 +475,74 @@ export function Account() {
 
           {/* Recent Orders */}
           <div className="card p-6">
-            <h3 className="font-semibold text-text-primary dark:text-dark-text-primary mb-4">
-              Recent Orders
-            </h3>
-            <div className="text-center py-8">
-              <Target className="w-12 h-12 mx-auto text-text-muted dark:text-dark-text-muted mb-3" />
-              <p className="text-text-secondary dark:text-dark-text-secondary">
-                No orders yet
-              </p>
-              <p className="text-sm text-text-muted dark:text-dark-text-muted mt-1">
-                Your order history will appear here
-              </p>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-text-primary dark:text-dark-text-primary">
+                Recent Orders
+              </h3>
+              <Link
+                to="/orders"
+                className="flex items-center gap-1 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors"
+              >
+                View All
+                <ChevronRight className="w-4 h-4" />
+              </Link>
             </div>
+
+            {ordersLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 text-primary-600 dark:text-primary-400 animate-spin" />
+              </div>
+            ) : ordersError ? (
+              <p className="text-sm text-red-600 dark:text-red-400 py-4">
+                {ordersError}
+              </p>
+            ) : recentOrders.length === 0 ? (
+              <div className="text-center py-8">
+                <ShoppingBag className="w-12 h-12 mx-auto text-text-muted dark:text-dark-text-muted mb-3" />
+                <p className="text-text-secondary dark:text-dark-text-secondary">
+                  No orders yet
+                </p>
+                <p className="text-sm text-text-muted dark:text-dark-text-muted mt-1">
+                  Your order history will appear here
+                </p>
+                <Link
+                  to="/shop"
+                  className="btn-primary inline-flex items-center gap-2 mt-4 text-sm"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  Start Shopping
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recentOrders.map((order) => {
+                  const StatusIcon = statusIconMap[order.status] || Clock;
+                  return (
+                    <Link
+                      key={order.id}
+                      to="/orders"
+                      className="flex items-center justify-between p-3 rounded-lg bg-surface-secondary/50 dark:bg-dark-surface-secondary/50 hover:bg-surface-tertiary/50 dark:hover:bg-dark-surface-tertiary/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-mono text-text-primary dark:text-dark-text-primary">
+                          #{order.id}
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
+                          <StatusIcon className="w-3 h-3" />
+                          {getStatusLabel(order.status)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm">
+                        <span className="font-medium text-text-primary dark:text-dark-text-primary">
+                          {formatPrice(Number(order.total))}
+                        </span>
+                        <ChevronRight className="w-4 h-4 text-text-muted dark:text-dark-text-muted" />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

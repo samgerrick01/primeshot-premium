@@ -6,6 +6,7 @@ import { Categories } from '@/pages/Categories';
 import { About } from '@/pages/About';
 import { Auth } from '@/pages/Auth';
 import { Account } from '@/pages/Account';
+import { Orders } from '@/pages/Orders';
 import { Cart } from '@/pages/Cart';
 import { Checkout } from '@/pages/Checkout';
 import { OrderConfirmation } from '@/pages/OrderConfirmation';
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: 'cart', element: <Cart /> },
       { path: 'checkout', element: <Checkout /> },
       { path: 'order-confirmation/:id', element: <OrderConfirmation /> },
+      { path: 'orders', element: <Orders /> },
       { path: 'payment-session', element: <PaymentSession /> },
       { path: 'product/:id', element: <ProductDetail /> },
       { path: 'faq', element: <FAQ /> },

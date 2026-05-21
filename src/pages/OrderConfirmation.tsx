@@ -9,7 +9,7 @@ export function OrderConfirmation() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate('/account?tab=orders');
+    navigate('/orders');
   }, [navigate]);
 
   return null;
