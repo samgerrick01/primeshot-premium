@@ -182,6 +182,27 @@ export const COURIER_SERVICES = [
 ] as const;
 
 // ============================================================
+// Courier Tracking URLs
+// ============================================================
+
+export const COURIER_TRACKING_URLS: Record<string, string> = {
+  'J&T Express': 'https://www.jtexpress.ph/tracking/{tracking_number}',
+  'LBC': 'https://www.lbcexpress.com/tracking/?tracking_number={tracking_number}',
+  'Ninja Van': 'https://www.ninjavan.ph/en-ph/tracking?awb={tracking_number}',
+};
+
+
+/**
+ * Get the tracking URL for a given courier service and tracking number.
+ * Returns null if the courier is not recognized (e.g., "Other").
+ */
+export function getTrackingUrl(courierService: string, trackingNumber: string): string | null {
+  const urlTemplate = COURIER_TRACKING_URLS[courierService];
+  if (!urlTemplate) return null;
+  return urlTemplate.replace('{tracking_number}', encodeURIComponent(trackingNumber));
+}
+
+// ============================================================
 // Theme
 // ============================================================
 

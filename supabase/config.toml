@@ -426,3 +426,8 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/send-admin-notification/index.ts"
 
+[functions.flash-express-tracking]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/flash-express-tracking/index.ts"
+

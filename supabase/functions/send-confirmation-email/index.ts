@@ -2,6 +2,14 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+// ── CORS Headers ──────────────────────────────────────────────
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
 interface ConfirmationPayload {
   email: string;
   firstname: string;
@@ -17,6 +25,11 @@ interface BrevoRequestBody {
 }
 
 Deno.serve(async (req) => {
+  // ── Handle CORS Preflight ──────────────────────────────────────
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
   try {
     // Parse the request body
     const { email, firstname, lastname, redirect_to }: ConfirmationPayload =
@@ -25,7 +38,7 @@ Deno.serve(async (req) => {
     if (!email) {
       return new Response(JSON.stringify({ error: "Email is required" }), {
         status: 400,
-        headers: { "Content-Type": "application/json" },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -33,8 +46,7 @@ Deno.serve(async (req) => {
     if (!brevoApiKey) {
       return new Response(
         JSON.stringify({ error: "BREVO_API_KEY not configured" }),
-        { status: 500, headers: { "Content-Type": "application/json" },
-      },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -43,8 +55,7 @@ Deno.serve(async (req) => {
     if (!supabaseUrl) {
       return new Response(
         JSON.stringify({ error: "SUPABASE_URL not configured" }),
-        { status: 500, headers: { "Content-Type": "application/json" },
-      },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -55,8 +66,7 @@ Deno.serve(async (req) => {
         JSON.stringify({
           error: "SUPABASE_SERVICE_ROLE_KEY not configured",
         }),
-        { status: 500, headers: { "Content-Type": "application/json" },
-      },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -85,8 +95,7 @@ Deno.serve(async (req) => {
       console.error("Error generating confirmation link:", otpError);
       return new Response(
         JSON.stringify({ error: otpError.message }),
-        { status: 500, headers: { "Content-Type": "application/json" },
-      },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -96,8 +105,7 @@ Deno.serve(async (req) => {
     if (!confirmationLink) {
       return new Response(
         JSON.stringify({ error: "Failed to generate confirmation link" }),
-        { status: 500, headers: { "Content-Type": "application/json" },
-      },
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -247,20 +255,20 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Failed to send confirmation email" }),
         {
           status: 500,
-          headers: { "Content-Type": "application/json" },
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         },
       );
     }
 
     return new Response(
       JSON.stringify({ success: true, message: "Confirmation email sent" }),
-      { status: 200, headers: { "Content-Type": "application/json" } },
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (err) {
     console.error("Unexpected error:", err);
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
