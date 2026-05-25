@@ -7,7 +7,7 @@ import { PRODUCT_CATEGORIES } from '@/constants/enums';
 
 export function Shop() {
   const { data: products, isLoading } = useProducts();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [showFilters, setShowFilters] = useState(false);

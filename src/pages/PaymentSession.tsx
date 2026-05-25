@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Clock,
   Copy,
@@ -147,18 +147,9 @@ function ReceiptUploadModal({
 // ── Main PaymentSession Page ─────────────────────────────────
 export function PaymentSession() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuthStore();
-  const {
-    items,
-    selectedItems,
-    getSelectedTotal,
-    getSelectedItemCount,
-    getTotal,
-    getItemCount,
-    removeItem,
-    clearCart,
-  } = useCartStore();
+  const { items, selectedItems, getSelectedTotal, getTotal, removeItem } =
+    useCartStore();
 
   // Session timer (60 minutes from now)
   const expiresAt = PAYMENT_INFO.SESSION_DURATION * 60; // seconds
@@ -204,8 +195,6 @@ export function PaymentSession() {
       ? items.filter((item) => selectedItems.has(item.id))
       : items;
   const total = selectedItems.size > 0 ? getSelectedTotal() : getTotal();
-  const itemCount =
-    selectedItems.size > 0 ? getSelectedItemCount() : getItemCount();
 
   // Cancel order session
   const handleCancel = () => {

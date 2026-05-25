@@ -4,7 +4,6 @@ import {
   User,
   Mail,
   Calendar,
-  Target,
   MapPin,
   Home,
   Road,

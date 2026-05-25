@@ -12,10 +12,6 @@ import {
   ChevronUp,
   Loader2,
   ImageIcon,
-  MapPin,
-  Calendar,
-  PackageCheck,
-  ExternalLink,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useOrdersStore } from '@/store/ordersStore';

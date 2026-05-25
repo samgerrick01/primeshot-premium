@@ -1,14 +1,6 @@
 import { Link } from 'react-router-dom';
-import {
-  Menu,
-  X,
-  User,
-  LogOut,
-  Shield,
-  ShoppingBag,
-  Package,
-} from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Menu, X, User, LogOut, Shield, ShoppingBag } from 'lucide-react';
+import { useState } from 'react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { CartIcon } from '@/components/ui/CartIcon';
 import { OrdersIcon } from '@/components/ui/OrdersIcon';
@@ -26,7 +18,7 @@ export function Navbar() {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <img
-              src="/src/assets/nav_logo.png"
+              src="/nav_logo.png"
               alt="PrimeShot Premium"
               className="h-10 w-auto"
             />
